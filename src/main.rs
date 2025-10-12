@@ -132,11 +132,15 @@ zush-theme() {
 typeset -g ZUSH_LAST_EXIT_CODE=0
 typeset -g ZUSH_CMD_START_TIME=0
 typeset -g ZUSH_CMD_DURATION=0
+typeset -g ZUSH_PROMPT_RENDERED=0
 
-# Preexec hook - called before command execution
+# Preexec hook - called before command execution (only when a command is entered)
 # Arguments: $1 = command line, $2 = command string, $3 = expanded command
 zush_preexec() {
     ZUSH_CMD_START_TIME=$EPOCHREALTIME
+
+    # Mark that preexec was called (a command was entered)
+    ZUSH_PROMPT_RENDERED=0
 
     # Capture the command that's about to be executed
     local cmd="$1"
@@ -183,6 +187,37 @@ zush_precmd() {
     else
         ZUSH_CMD_DURATION=0
     fi
+
+    # If preexec wasn't called (user just pressed Enter without typing a command),
+    # convert the previous prompt to transient
+    if [[ $ZUSH_PROMPT_RENDERED -eq 1 ]]; then
+        # Build minimal context for transient prompt
+        local theme_args=""
+        if [[ -n "$ZUSH_CURRENT_THEME" ]]; then
+            theme_args="--theme $ZUSH_CURRENT_THEME"
+        fi
+
+        local context_json=$(cat <<EOF
+{
+    "time": "$(date +%H:%M:%S)"
+}
+EOF
+        )
+
+        # Render transient prompt (empty command line)
+        local transient_prompt=$($ZUSH_PROMPT_BIN --template transient --format raw $theme_args prompt \
+            --context "$context_json" \
+            --exit-code $ZUSH_LAST_EXIT_CODE \
+            --execution-time 0)
+
+        # Move cursor up to beginning of prompt, clear lines, and print transient version
+        local prompt_lines=2
+        printf '\e[%dA\e[0G\e[0J%s\n' "$prompt_lines" "$transient_prompt"
+    fi
+
+    # Mark that we're about to render a new prompt
+    # preexec will set this to 0 if a command is executed
+    ZUSH_PROMPT_RENDERED=1
 }
 
 # Generate prompt
