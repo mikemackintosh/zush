@@ -3,6 +3,8 @@ mod color;
 mod template;
 mod segments;
 mod config;
+mod git;
+mod modules;
 
 use std::fs;
 use std::path::PathBuf;
@@ -102,11 +104,39 @@ fn print_init_script(shell: &str) -> Result<()> {
     let script = r#"#!/usr/bin/env zsh
 # Zush Prompt Integration for Zsh
 
-# Path to the zush-prompt binary
+# Load datetime module for EPOCHREALTIME support
+zmodload zsh/datetime
+
+# ============================================================================
+# ENVIRONMENT VARIABLES - Runtime behavior configuration
+# Set these in ~/.zshrc BEFORE sourcing this file to customize behavior
+# For visual appearance (colors, symbols, templates), edit theme TOML files
+# See CONFIGURATION.md for details
+# ============================================================================
+
+# ZUSH_PROMPT_BIN - Path to the zush-prompt binary
+# Default: "zush-prompt" (searches $PATH)
+# Example: export ZUSH_PROMPT_BIN="$HOME/.local/bin/zush-prompt"
 ZUSH_PROMPT_BIN="${ZUSH_PROMPT_BIN:-zush-prompt}"
 
-# Theme management
+# ZUSH_CURRENT_THEME - Which theme to use
+# Default: "split"
+# Options: dcs, minimal, powerline, split, or path to custom theme
+# Example: export ZUSH_CURRENT_THEME="minimal"
+# Runtime: Use `zush-theme <name>` to switch themes
 typeset -g ZUSH_CURRENT_THEME="${ZUSH_CURRENT_THEME:-split}"
+
+# ZUSH_PROMPT_NEWLINE_BEFORE - Add blank line before prompt (after command output)
+# Default: 1 (enabled)
+# Set to 0 to disable spacing before prompt
+# Example: export ZUSH_PROMPT_NEWLINE_BEFORE=0
+typeset -g ZUSH_PROMPT_NEWLINE_BEFORE="${ZUSH_PROMPT_NEWLINE_BEFORE:-1}"
+
+# ZUSH_PROMPT_NEWLINE_AFTER - Add blank line after prompt (before command output)
+# Default: 0 (disabled)
+# Set to 1 to add spacing between prompt and command output
+# Example: export ZUSH_PROMPT_NEWLINE_AFTER=1
+typeset -g ZUSH_PROMPT_NEWLINE_AFTER="${ZUSH_PROMPT_NEWLINE_AFTER:-0}"
 
 # Function to switch themes dynamically
 zush-theme() {
@@ -173,6 +203,11 @@ EOF
     # \e[0G moves cursor to beginning of line
     # \e[0J clears from cursor to end of screen
     printf '\e[%dA\e[0G\e[0J%s%s\n' "$prompt_lines" "$transient_prompt" "$cmd"
+
+    # Add newline after prompt if configured (before command output)
+    if [[ $ZUSH_PROMPT_NEWLINE_AFTER -eq 1 ]]; then
+        print
+    fi
 }
 
 # Precmd hook - called before prompt display
@@ -218,49 +253,18 @@ EOF
     # Mark that we're about to render a new prompt
     # preexec will set this to 0 if a command is executed
     ZUSH_PROMPT_RENDERED=1
+
+    # Add newline before prompt if configured
+    if [[ $ZUSH_PROMPT_NEWLINE_BEFORE -eq 1 ]]; then
+        print
+    fi
 }
 
 # Generate prompt
 zush_prompt() {
-    # Collect git status if in a git repo
-    local git_branch=$(git branch --show-current 2>/dev/null || echo '')
-    local git_staged=0
-    local git_modified=0
-    local git_added=0
-    local git_deleted=0
-    local git_renamed=0
-    local git_untracked=0
-    local git_conflicted=0
-
-    if [[ -n "$git_branch" ]]; then
-        # Parse git status --porcelain output
-        while IFS= read -r line; do
-            local index_status="${line:0:1}"
-            local work_status="${line:1:1}"
-
-            # Index/staged changes
-            case "$index_status" in
-                "M") ((git_staged++)) ;;
-                "A") ((git_added++)); ((git_staged++)) ;;
-                "D") ((git_deleted++)); ((git_staged++)) ;;
-                "R") ((git_renamed++)); ((git_staged++)) ;;
-            esac
-
-            # Working tree changes
-            case "$work_status" in
-                "M") ((git_modified++)) ;;
-                "D") ((git_deleted++)) ;;
-            esac
-
-            # Untracked and conflicted
-            if [[ "$index_status" == "?" ]]; then
-                ((git_untracked++))
-            elif [[ "$index_status" == "U" || "$work_status" == "U" ]]; then
-                ((git_conflicted++))
-            fi
-        done < <(git status --porcelain 2>/dev/null)
-    fi
-
+    # Build context JSON
+    # NOTE: Git status is now handled natively in Rust for much better performance
+    # The Rust binary reads .git directory directly instead of spawning git commands
     local context_json=$(cat <<EOF
 {
     "pwd": "$PWD",
@@ -268,14 +272,6 @@ zush_prompt() {
     "user": "$USER",
     "host": "$HOST",
     "shell": "zsh",
-    "git_branch": "$git_branch",
-    "git_staged": $git_staged,
-    "git_modified": $git_modified,
-    "git_added": $git_added,
-    "git_deleted": $git_deleted,
-    "git_renamed": $git_renamed,
-    "git_untracked": $git_untracked,
-    "git_conflicted": $git_conflicted,
     "ssh": "${SSH_CONNECTION:+true}",
     "virtual_env": "${VIRTUAL_ENV:+$(basename $VIRTUAL_ENV)}",
     "jobs": "$(jobs | wc -l | tr -d ' ')",
@@ -551,7 +547,86 @@ fn render_prompt(
     context.insert("execution_time_ms".to_string(), json!(exec_time_ms as i64));
     context.insert("execution_time_s".to_string(), json!(execution_time.unwrap_or(0.0)));
 
-    // Ensure git status variables exist with defaults
+    // Collect environment information natively (avoids shell overhead)
+    // Get current time (replaces date +%H:%M:%S)
+    if !context.contains_key("time") {
+        use chrono::Local;
+        let time = Local::now().format("%H:%M:%S").to_string();
+        context.insert("time".to_string(), json!(time));
+    }
+
+    // Get user and hostname from environment (much faster than shell variables)
+    if !context.contains_key("user") {
+        if let Ok(user) = std::env::var("USER") {
+            context.insert("user".to_string(), json!(user));
+        }
+    }
+    if !context.contains_key("host") {
+        if let Ok(host) = std::env::var("HOST") {
+            context.insert("host".to_string(), json!(host));
+        } else if let Ok(hostname) = std::env::var("HOSTNAME") {
+            context.insert("host".to_string(), json!(hostname));
+        }
+    }
+
+    // Get PWD from environment if not provided
+    if !context.contains_key("pwd") {
+        if let Ok(pwd) = std::env::var("PWD") {
+            context.insert("pwd".to_string(), json!(pwd.clone()));
+            // Also create pwd_short
+            if let Ok(home) = std::env::var("HOME") {
+                let pwd_short = pwd.replace(&home, "~");
+                context.insert("pwd_short".to_string(), json!(pwd_short));
+            } else {
+                context.insert("pwd_short".to_string(), json!(pwd));
+            }
+        } else {
+            // Fallback to current_dir
+            if let Ok(pwd) = std::env::current_dir() {
+                let pwd_str = pwd.display().to_string();
+                context.insert("pwd".to_string(), json!(pwd_str.clone()));
+                if let Ok(home) = std::env::var("HOME") {
+                    let pwd_short = pwd_str.replace(&home, "~");
+                    context.insert("pwd_short".to_string(), json!(pwd_short));
+                } else {
+                    context.insert("pwd_short".to_string(), json!(pwd_str));
+                }
+            }
+        }
+    }
+
+    // Count background jobs from environment (replaces jobs | wc -l)
+    // This is tricky - we need to count from parent shell's job table
+    // For now, allow shell to pass it, but provide a default
+    if !context.contains_key("jobs") {
+        // Try to count from /proc (Linux) or fallback to 0
+        #[cfg(target_os = "linux")]
+        {
+            // Count child processes with state 'T' (stopped) or 'S' (sleeping in background)
+            // This is an approximation
+            context.entry("jobs".to_string()).or_insert(json!(0));
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            context.entry("jobs".to_string()).or_insert(json!(0));
+        }
+    }
+
+    // Get git status natively (much faster than shell git commands)
+    // This reads .git directory directly instead of spawning git processes
+    if let Some(pwd) = context.get("pwd").and_then(|v| v.as_str()) {
+        if let Some(git_status) = git::get_git_status(std::path::Path::new(pwd)) {
+            let git_json = git::git_status_to_json(&git_status);
+            if let Value::Object(git_map) = git_json {
+                for (key, value) in git_map {
+                    context.insert(key, value);
+                }
+            }
+        }
+    }
+
+    // Ensure git status variables exist with defaults (if not in git repo)
+    context.entry("git_branch".to_string()).or_insert(json!(""));
     context.entry("git_staged".to_string()).or_insert(json!(0));
     context.entry("git_modified".to_string()).or_insert(json!(0));
     context.entry("git_added".to_string()).or_insert(json!(0));
@@ -559,6 +634,28 @@ fn render_prompt(
     context.entry("git_renamed".to_string()).or_insert(json!(0));
     context.entry("git_untracked".to_string()).or_insert(json!(0));
     context.entry("git_conflicted".to_string()).or_insert(json!(0));
+
+    // Collect module information (Python, Node, Rust, Docker, etc.)
+    // This is done natively for performance - context-aware detection
+    if let Ok(module_context) = modules::ModuleContext::new() {
+        let mut registry = modules::registry::ModuleRegistry::new();
+
+        // Render all enabled modules that should display in current context
+        let module_outputs = registry.render_all(&module_context);
+
+        // Add module outputs to context
+        let mut modules_data = Vec::new();
+        for output in module_outputs {
+            modules_data.push(json!({
+                "id": output.id,
+                "content": output.content,
+            }));
+        }
+
+        if !modules_data.is_empty() {
+            context.insert("modules".to_string(), json!(modules_data));
+        }
+    }
 
     // Load colors from theme/config or use defaults
     let mut colors = HashMap::new();

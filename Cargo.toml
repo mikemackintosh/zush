@@ -48,6 +48,9 @@ shellexpand = "3.1"
 # Caching for performance
 cached = "0.46"
 
+[dev-dependencies]
+tempfile = "3.8"
+
 [features]
 default = []
 async = ["tokio"]

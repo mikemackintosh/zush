@@ -1,10 +1,31 @@
-# Zush Prompt Configuration Example
-# Copy this file to ~/.config/zush/config.toml and customize
+# Zush Main Configuration Example
+# Copy this to ~/.config/zush/config.toml to use it
+#
+# NOTE: This is for VISUAL APPEARANCE only (colors, symbols, templates)
+# For RUNTIME BEHAVIOR (spacing, theme selection), use environment variables
+# See CONFIGURATION.md for details
 
-# Color definitions using hex codes
+# ============================================================================
+# THEME SELECTION
+# ============================================================================
+# Specify which theme to use (optional - can also use ZUSH_CURRENT_THEME env var)
+# If not set, defaults to "split"
+# theme = "split"
+
+# ============================================================================
+# COLORS
+# ============================================================================
+# Define colors using RGB hex values
+# These are available in templates as {{color colors.red "text"}}
+
 [colors]
-background = "#1a1b26"    # Tokyo Night background
-foreground = "#c0caf5"    # Main text color
+# Tokyo Night color scheme (default)
+background = "#1a1b26"
+foreground = "#c0caf5"
+fg_dark = "#a9b1d6"
+fg_dim = "#565f89"
+
+# Standard colors
 black = "#15161e"
 red = "#f7768e"
 green = "#9ece6a"
@@ -13,134 +34,74 @@ blue = "#7aa2f7"
 magenta = "#bb9af7"
 cyan = "#7dcfff"
 white = "#c0caf5"
+
+# Extended colors
 orange = "#ff9e64"
 purple = "#9d7cd8"
 teal = "#1abc9c"
 
-# Symbol definitions (can use powerline fonts)
+# ============================================================================
+# SYMBOLS
+# ============================================================================
+# Define symbols used in your prompt
+# Unicode characters and powerline fonts are supported
+
 [symbols]
+# Prompt symbols
 prompt_arrow = "❯"
-segment_separator = ""      # Powerline separator
-segment_separator_thin = ""  # Thin powerline separator
+prompt_arrow_alt = "›"
+lambda = "λ"
+
+# Powerline separators
+segment_separator = ""       # Full height separator
+segment_separator_thin = ""  # Thin separator
+segment_separator_left = ""
+segment_separator_right = ""
+
+# Git symbols
 git_branch = ""
 git_dirty = "✗"
 git_clean = "✓"
+git_added = "✚"
+git_modified = "●"
+git_deleted = "✖"
+git_renamed = "➜"
+git_untracked = "?"
+git_conflicted = "="
+
+# Status symbols
 ssh = ""
 root = ""
 jobs = ""
 error = "✖"
 success = "✓"
-folder = ""
-home = ""
-python = "🐍"
-node = ""
-rust = "🦀"
-docker = "🐳"
-k8s = "☸"
-aws = "☁"
+warning = "⚠"
 
-# Segment configuration
-[segments]
-# Left-aligned segments
-left = ["status", "user", "host", "directory"]
+# ============================================================================
+# TEMPLATES
+# ============================================================================
+# Define prompt templates using Handlebars syntax
 
-# Center-aligned segments
-center = ["git"]
+[templates]
 
-# Right-aligned segments
-right = ["execution_time", "time"]
+# Main prompt - appears when waiting for input
+main = """{{first_line}}
+{{color colors.green symbols.prompt_arrow}} """
 
-# Behavior settings
-[behavior]
-transient_prompt = true                # Enable transient prompts
-auto_newline = true                    # Add newline before prompt
-show_execution_time_threshold = 2.0    # Show execution time if > 2s
-truncate_dir_depth = 3                 # Truncate directory to 3 levels
-enable_icons = true                    # Enable icons/symbols
+# Left side of first line (user, host, directory, git)
+left = """{{color colors.blue user}}@{{color colors.blue host}}  {{color colors.magenta pwd_short}}  {{#if git_branch}}{{color colors.cyan git_branch}} {{/if}}"""
 
-# Template definitions using Handlebars syntax
-[templates.main]
-description = "Main prompt template"
-template = """
-{{#if (eq exit_code 0)}}
-  {{color colors.green symbols.success}}
-{{else}}
-  {{color colors.red symbols.error}} {{color colors.red exit_code}}
-{{/if}}
-{{bold " "}}
-{{#if ssh}}
-  {{color colors.orange symbols.ssh}} {{color colors.cyan user}}@{{color colors.cyan host}}
-{{else if (eq user "root")}}
-  {{color colors.red symbols.root}} {{color colors.red "root"}}
-{{else}}
-  {{color colors.blue user}}
-{{/if}}
-{{color colors.white " in "}}
-{{color colors.magenta pwd_short}}
-{{#if git_branch}}
-  {{color colors.white " on "}}
-  {{color colors.green symbols.git_branch}} {{color colors.green git_branch}}
-  {{#if git_dirty}}
-    {{color colors.red " "}}{{color colors.red symbols.git_dirty}}
-  {{else}}
-    {{color colors.green " "}}{{color colors.green symbols.git_clean}}
-  {{/if}}
-{{/if}}
-{{#if virtual_env}}
-  {{color colors.yellow " ("}}{{color colors.yellow symbols.python}}{{color colors.yellow " "}}{{color colors.yellow virtual_env}}{{color colors.yellow ")"}}
-{{/if}}
-{{#if (gt jobs "0")}}
-  {{color colors.cyan " ["}}{{color colors.cyan symbols.jobs}}{{color colors.cyan " "}}{{color colors.cyan jobs}}{{color colors.cyan "]"}}
-{{/if}}
+# Right side of first line (execution time, timestamp)
+right = """{{#if execution_time}}{{#if (gt execution_time 1000)}}{{bg colors.red}}{{color colors.white (div execution_time 1000)}}s{{reset}} {{/if}}{{/if}}{{color colors.fg_dim time}}"""
 
-{{color colors.blue symbols.prompt_arrow}} """
+# Transient prompt - simplified version in scrollback
+transient = """{{color colors.cyan time}}
+{{color colors.green symbols.prompt_arrow}} """
 
-[templates.transient]
-description = "Simplified prompt for previous commands"
-template = """
-{{dim time}} {{color colors.fg_dim "|"}} {{dim command}}
-{{color colors.blue symbols.prompt_arrow}} """
-
-[templates.right]
-description = "Right-side prompt"
-template = """
-{{#if k8s_context}}
-  {{color colors.blue symbols.k8s}} {{color colors.blue k8s_context}}
-{{/if}}
-{{#if aws_profile}}
-  {{color colors.orange symbols.aws}} {{color colors.orange aws_profile}}
-{{/if}}
-{{#if execution_time}}
-  {{#if (gt execution_time 60)}}
-    {{color colors.red (truncate execution_time_formatted 10)}}
-  {{else if (gt execution_time 10)}}
-    {{color colors.yellow execution_time}}s
-  {{else if (gt execution_time behavior.show_execution_time_threshold)}}
-    {{color colors.green execution_time}}s
-  {{/if}}
-{{/if}}
-{{dim time}}"""
-
-[templates.continuation]
-description = "Prompt for multi-line command continuation"
-template = "{{color colors.blue \"  ...\"}} "
-
-# Alternative minimal template
-[templates.minimal]
-description = "Minimal prompt"
-template = """
-{{#if (eq exit_code 0)}}{{color colors.green "➜"}}{{else}}{{color colors.red "➜"}}{{/if}} {{color colors.cyan pwd_short}} {{color colors.blue symbols.prompt_arrow}} """
-
-# Alternative two-line template
-[templates.twoline]
-description = "Two-line prompt with full info on first line"
-template = """
-╭─ {{bold user}}@{{bold host}} {{color colors.white "in"}} {{color colors.magenta pwd}}{{#if git_branch}} {{color colors.white "on"}} {{color colors.green symbols.git_branch}} {{color colors.green git_branch}}{{/if}}
-╰─{{color colors.blue symbols.prompt_arrow}} """
-
-# Alternative powerline template
-[templates.powerline]
-description = "Powerline-style prompt"
-template = """
-{{bg colors.blue}}{{color colors.black " "}}{{bold user}}{{color colors.black " "}}{{reset}}{{color colors.blue}}{{bg colors.magenta}}{{symbols.segment_separator}}{{reset}}{{bg colors.magenta}}{{color colors.black " "}}{{pwd_short}}{{color colors.black " "}}{{reset}}{{color colors.magenta}}{{#if git_branch}}{{bg colors.green}}{{symbols.segment_separator}}{{reset}}{{bg colors.green}}{{color colors.black " "}}{{symbols.git_branch}}{{color colors.black " "}}{{git_branch}}{{color colors.black " "}}{{reset}}{{color colors.green}}{{/if}}{{symbols.segment_separator}}{{reset}}
-{{color colors.blue symbols.prompt_arrow}} """
+# ============================================================================
+# TEMPLATE VARIABLES AVAILABLE
+# ============================================================================
+# user, host, pwd, pwd_short, shell, ssh, virtual_env
+# git_branch, git_staged, git_modified, git_added, git_deleted, git_untracked
+# exit_code, execution_time, time, jobs, terminal_width
+# colors.*, symbols.*
