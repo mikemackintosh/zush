@@ -1,0 +1,288 @@
+use std::collections::HashMap;
+use handlebars::{Handlebars, RenderContext, Helper, Output, HelperResult, Context};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use anyhow::{Result, Context as AnyhowContext};
+use crate::color::Color;
+
+/// Template engine for prompt rendering
+pub struct TemplateEngine {
+    handlebars: Handlebars<'static>,
+    context_data: HashMap<String, Value>,
+}
+
+impl TemplateEngine {
+    /// Create a new template engine
+    pub fn new() -> Result<Self> {
+        let mut handlebars = Handlebars::new();
+
+        // Register custom helpers
+        handlebars.register_helper("color", Box::new(color_helper));
+        handlebars.register_helper("bg", Box::new(bg_helper));
+        handlebars.register_helper("fg", Box::new(fg_helper));
+        handlebars.register_helper("segment", Box::new(segment_helper));
+        handlebars.register_helper("bold", Box::new(bold_helper));
+        handlebars.register_helper("dim", Box::new(dim_helper));
+        handlebars.register_helper("italic", Box::new(italic_helper));
+        handlebars.register_helper("underline", Box::new(underline_helper));
+        handlebars.register_helper("reset", Box::new(reset_helper));
+        handlebars.register_helper("truncate", Box::new(truncate_helper));
+        handlebars.register_helper("pad_left", Box::new(pad_left_helper));
+        handlebars.register_helper("pad_right", Box::new(pad_right_helper));
+        handlebars.register_helper("center", Box::new(center_helper));
+
+        // Disable HTML escaping for terminal output
+        handlebars.register_escape_fn(handlebars::no_escape);
+
+        Ok(Self {
+            handlebars,
+            context_data: HashMap::new(),
+        })
+    }
+
+    /// Register a template
+    pub fn register_template(&mut self, name: &str, template: &str) -> Result<()> {
+        self.handlebars
+            .register_template_string(name, template)
+            .with_context(|| format!("Failed to register template: {}", name))?;
+        Ok(())
+    }
+
+    /// Load templates from a TOML configuration
+    pub fn load_templates_from_config(&mut self, config_str: &str) -> Result<()> {
+        let config: TemplateConfig = toml::from_str(config_str)?;
+
+        for (name, template) in config.templates {
+            self.register_template(&name, &template)?;
+        }
+
+        Ok(())
+    }
+
+    /// Set context data
+    pub fn set_context(&mut self, data: HashMap<String, Value>) {
+        self.context_data = data;
+    }
+
+    /// Add or update a context value
+    pub fn set_value(&mut self, key: &str, value: Value) {
+        self.context_data.insert(key.to_string(), value);
+    }
+
+    /// Render a template
+    pub fn render(&self, template_name: &str) -> Result<String> {
+        let result = self.handlebars
+            .render(template_name, &self.context_data)
+            .with_context(|| format!("Failed to render template: {}", template_name))?;
+        Ok(result)
+    }
+
+    /// Render a template string directly
+    pub fn render_string(&self, template: &str) -> Result<String> {
+        let result = self.handlebars
+            .render_template(template, &self.context_data)
+            .with_context(|| "Failed to render template string")?;
+        Ok(result)
+    }
+}
+
+/// Template configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TemplateConfig {
+    pub templates: HashMap<String, String>,
+}
+
+// Helper functions for Handlebars
+
+/// Color helper: {{color "hex" "text"}} or {{color r g b "text"}}
+fn color_helper(h: &Helper, _: &Handlebars, _ctx: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let params = h.params();
+
+    if params.len() == 2 {
+        // Get the color value - it could be a direct hex string or a reference to context
+        let color_value = params[0].value();
+        let text = params[1].value().as_str().unwrap_or("");
+
+        let hex = if let Some(hex_str) = color_value.as_str() {
+            // Direct hex string
+            hex_str
+        } else {
+            // Default fallback
+            "#ffffff"
+        };
+
+        if let Ok(color) = Color::from_hex(hex) {
+            write!(out, "{}{}\x1b[0m", color.to_ansi_fg(), text)?;
+        }
+    } else if params.len() == 4 {
+        // RGB format
+        let r = params[0].value().as_u64().unwrap_or(255) as u8;
+        let g = params[1].value().as_u64().unwrap_or(255) as u8;
+        let b = params[2].value().as_u64().unwrap_or(255) as u8;
+        let text = params[3].value().as_str().unwrap_or("");
+
+        let color = Color::new(r, g, b);
+        write!(out, "{}{}\x1b[0m", color.to_ansi_fg(), text)?;
+    }
+
+    Ok(())
+}
+
+/// Background color helper: {{bg "hex"}} or {{bg "hex" "text"}}
+fn bg_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let params = h.params();
+
+    if params.len() == 1 {
+        // Just set background color (NO RESET)
+        let hex = params[0].value().as_str().unwrap_or("#000000");
+        if let Ok(color) = Color::from_hex(hex) {
+            write!(out, "{}", color.to_ansi_bg())?;
+        }
+    } else if params.len() == 2 {
+        // Background color with text
+        let hex = params[0].value().as_str().unwrap_or("#000000");
+        let text = params[1].value().as_str().unwrap_or("");
+        if let Ok(color) = Color::from_hex(hex) {
+            write!(out, "{}{}\x1b[0m", color.to_ansi_bg(), text)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Foreground color helper (no auto-reset): {{fg "hex"}}
+fn fg_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let hex = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("#ffffff");
+    if let Ok(color) = Color::from_hex(hex) {
+        write!(out, "{}", color.to_ansi_fg())?;
+    }
+    Ok(())
+}
+
+/// Powerline segment helper: {{segment "bg_color" "fg_color" "text"}}
+/// Sets both background and foreground, no auto-reset
+fn segment_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let params = h.params();
+
+    if params.len() == 3 {
+        let bg_hex = params[0].value().as_str().unwrap_or("#000000");
+        let fg_hex = params[1].value().as_str().unwrap_or("#ffffff");
+        let text = params[2].value().as_str().unwrap_or("");
+
+        if let (Ok(bg_color), Ok(fg_color)) = (Color::from_hex(bg_hex), Color::from_hex(fg_hex)) {
+            write!(out, "{}{}{}", bg_color.to_ansi_bg(), fg_color.to_ansi_fg(), text)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Bold helper: {{bold "text"}}
+fn bold_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
+    write!(out, "\x1b[1m{}\x1b[0m", text)?;
+    Ok(())
+}
+
+/// Dim helper: {{dim "text"}}
+fn dim_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
+    write!(out, "\x1b[2m{}\x1b[0m", text)?;
+    Ok(())
+}
+
+/// Italic helper: {{italic "text"}}
+fn italic_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
+    write!(out, "\x1b[3m{}\x1b[0m", text)?;
+    Ok(())
+}
+
+/// Underline helper: {{underline "text"}}
+fn underline_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
+    write!(out, "\x1b[4m{}\x1b[0m", text)?;
+    Ok(())
+}
+
+/// Reset helper: {{reset}}
+fn reset_helper(_: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    write!(out, "\x1b[0m")?;
+    Ok(())
+}
+
+
+/// Truncate helper: {{truncate text max_length}}
+fn truncate_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
+    let max_len = h.param(1).and_then(|v| v.value().as_u64()).unwrap_or(30) as usize;
+
+    if text.len() > max_len {
+        write!(out, "{}...", &text[..max_len.saturating_sub(3)])?;
+    } else {
+        write!(out, "{}", text)?;
+    }
+
+    Ok(())
+}
+
+/// Pad left helper: {{pad_left text width}}
+fn pad_left_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
+    let width = h.param(1).and_then(|v| v.value().as_u64()).unwrap_or(0) as usize;
+
+    write!(out, "{:>width$}", text, width = width)?;
+    Ok(())
+}
+
+/// Pad right helper: {{pad_right text width}}
+fn pad_right_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
+    let width = h.param(1).and_then(|v| v.value().as_u64()).unwrap_or(0) as usize;
+
+    write!(out, "{:<width$}", text, width = width)?;
+    Ok(())
+}
+
+/// Center helper: {{center text width}}
+fn center_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
+    let width = h.param(1).and_then(|v| v.value().as_u64()).unwrap_or(0) as usize;
+
+    let text_len = unicode_width::UnicodeWidthStr::width(text);
+    if text_len < width {
+        let padding = (width - text_len) / 2;
+        write!(out, "{:padding$}{}", "", text, padding = padding)?;
+    } else {
+        write!(out, "{}", text)?;
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_template_rendering() {
+        let mut engine = TemplateEngine::new().unwrap();
+
+        engine.register_template("test", "Hello {{name}}!").unwrap();
+        engine.set_value("name", json!("World"));
+
+        let result = engine.render("test").unwrap();
+        assert_eq!(result, "Hello World!");
+    }
+
+    #[test]
+    fn test_color_helper() {
+        let mut engine = TemplateEngine::new().unwrap();
+
+        engine.register_template("test", r##"{{color "#ff0000" "Red Text"}}"##).unwrap();
+
+        let result = engine.render("test").unwrap();
+        assert!(result.contains("\x1b[38;2;255;0;0m"));
+        assert!(result.contains("Red Text"));
+    }
+}

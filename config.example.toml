@@ -1,0 +1,146 @@
+# Zush Prompt Configuration Example
+# Copy this file to ~/.config/zush/config.toml and customize
+
+# Color definitions using hex codes
+[colors]
+background = "#1a1b26"    # Tokyo Night background
+foreground = "#c0caf5"    # Main text color
+black = "#15161e"
+red = "#f7768e"
+green = "#9ece6a"
+yellow = "#e0af68"
+blue = "#7aa2f7"
+magenta = "#bb9af7"
+cyan = "#7dcfff"
+white = "#c0caf5"
+orange = "#ff9e64"
+purple = "#9d7cd8"
+teal = "#1abc9c"
+
+# Symbol definitions (can use powerline fonts)
+[symbols]
+prompt_arrow = "❯"
+segment_separator = ""      # Powerline separator
+segment_separator_thin = ""  # Thin powerline separator
+git_branch = ""
+git_dirty = "✗"
+git_clean = "✓"
+ssh = ""
+root = ""
+jobs = ""
+error = "✖"
+success = "✓"
+folder = ""
+home = ""
+python = "🐍"
+node = ""
+rust = "🦀"
+docker = "🐳"
+k8s = "☸"
+aws = "☁"
+
+# Segment configuration
+[segments]
+# Left-aligned segments
+left = ["status", "user", "host", "directory"]
+
+# Center-aligned segments
+center = ["git"]
+
+# Right-aligned segments
+right = ["execution_time", "time"]
+
+# Behavior settings
+[behavior]
+transient_prompt = true                # Enable transient prompts
+auto_newline = true                    # Add newline before prompt
+show_execution_time_threshold = 2.0    # Show execution time if > 2s
+truncate_dir_depth = 3                 # Truncate directory to 3 levels
+enable_icons = true                    # Enable icons/symbols
+
+# Template definitions using Handlebars syntax
+[templates.main]
+description = "Main prompt template"
+template = """
+{{#if (eq exit_code 0)}}
+  {{color colors.green symbols.success}}
+{{else}}
+  {{color colors.red symbols.error}} {{color colors.red exit_code}}
+{{/if}}
+{{bold " "}}
+{{#if ssh}}
+  {{color colors.orange symbols.ssh}} {{color colors.cyan user}}@{{color colors.cyan host}}
+{{else if (eq user "root")}}
+  {{color colors.red symbols.root}} {{color colors.red "root"}}
+{{else}}
+  {{color colors.blue user}}
+{{/if}}
+{{color colors.white " in "}}
+{{color colors.magenta pwd_short}}
+{{#if git_branch}}
+  {{color colors.white " on "}}
+  {{color colors.green symbols.git_branch}} {{color colors.green git_branch}}
+  {{#if git_dirty}}
+    {{color colors.red " "}}{{color colors.red symbols.git_dirty}}
+  {{else}}
+    {{color colors.green " "}}{{color colors.green symbols.git_clean}}
+  {{/if}}
+{{/if}}
+{{#if virtual_env}}
+  {{color colors.yellow " ("}}{{color colors.yellow symbols.python}}{{color colors.yellow " "}}{{color colors.yellow virtual_env}}{{color colors.yellow ")"}}
+{{/if}}
+{{#if (gt jobs "0")}}
+  {{color colors.cyan " ["}}{{color colors.cyan symbols.jobs}}{{color colors.cyan " "}}{{color colors.cyan jobs}}{{color colors.cyan "]"}}
+{{/if}}
+
+{{color colors.blue symbols.prompt_arrow}} """
+
+[templates.transient]
+description = "Simplified prompt for previous commands"
+template = """
+{{dim time}} {{color colors.fg_dim "|"}} {{dim command}}
+{{color colors.blue symbols.prompt_arrow}} """
+
+[templates.right]
+description = "Right-side prompt"
+template = """
+{{#if k8s_context}}
+  {{color colors.blue symbols.k8s}} {{color colors.blue k8s_context}}
+{{/if}}
+{{#if aws_profile}}
+  {{color colors.orange symbols.aws}} {{color colors.orange aws_profile}}
+{{/if}}
+{{#if execution_time}}
+  {{#if (gt execution_time 60)}}
+    {{color colors.red (truncate execution_time_formatted 10)}}
+  {{else if (gt execution_time 10)}}
+    {{color colors.yellow execution_time}}s
+  {{else if (gt execution_time behavior.show_execution_time_threshold)}}
+    {{color colors.green execution_time}}s
+  {{/if}}
+{{/if}}
+{{dim time}}"""
+
+[templates.continuation]
+description = "Prompt for multi-line command continuation"
+template = "{{color colors.blue \"  ...\"}} "
+
+# Alternative minimal template
+[templates.minimal]
+description = "Minimal prompt"
+template = """
+{{#if (eq exit_code 0)}}{{color colors.green "➜"}}{{else}}{{color colors.red "➜"}}{{/if}} {{color colors.cyan pwd_short}} {{color colors.blue symbols.prompt_arrow}} """
+
+# Alternative two-line template
+[templates.twoline]
+description = "Two-line prompt with full info on first line"
+template = """
+╭─ {{bold user}}@{{bold host}} {{color colors.white "in"}} {{color colors.magenta pwd}}{{#if git_branch}} {{color colors.white "on"}} {{color colors.green symbols.git_branch}} {{color colors.green git_branch}}{{/if}}
+╰─{{color colors.blue symbols.prompt_arrow}} """
+
+# Alternative powerline template
+[templates.powerline]
+description = "Powerline-style prompt"
+template = """
+{{bg colors.blue}}{{color colors.black " "}}{{bold user}}{{color colors.black " "}}{{reset}}{{color colors.blue}}{{bg colors.magenta}}{{symbols.segment_separator}}{{reset}}{{bg colors.magenta}}{{color colors.black " "}}{{pwd_short}}{{color colors.black " "}}{{reset}}{{color colors.magenta}}{{#if git_branch}}{{bg colors.green}}{{symbols.segment_separator}}{{reset}}{{bg colors.green}}{{color colors.black " "}}{{symbols.git_branch}}{{color colors.black " "}}{{git_branch}}{{color colors.black " "}}{{reset}}{{color colors.green}}{{/if}}{{symbols.segment_separator}}{{reset}}
+{{color colors.blue symbols.prompt_arrow}} """
