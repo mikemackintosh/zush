@@ -1,0 +1,69 @@
+# Starship Theme
+# Clean, minimal, context-aware prompt inspired by Starship.rs
+# Uses simplified template syntax for readability
+
+name = "starship"
+description = "Starship-inspired minimal prompt with context-aware modules"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+# Starship-like color palette
+user = "#9ece6a"           # Green for username
+host = "#7aa2f7"           # Blue for hostname
+directory = "#7dcfff"      # Cyan for directory
+git_clean = "#9ece6a"      # Green when clean
+git_dirty = "#e0af68"      # Yellow when dirty
+git_staged = "#9ece6a"     # Green for staged
+git_modified = "#e0af68"   # Yellow for modified
+git_untracked = "#f7768e"  # Red for untracked
+error = "#f7768e"          # Red for errors
+success = "#9ece6a"        # Green for success
+dimmed = "#565f89"         # Dim gray
+time = "#565f89"           # Dim for time
+duration_fast = "#9ece6a"  # Green < 1s
+duration_slow = "#e0af68"  # Yellow 1-5s
+duration_very_slow = "#f7768e"  # Red >= 5s
+
+# Module colors
+python = "#7dcfff"         # Cyan
+node = "#9ece6a"           # Green
+rust = "#e0af68"           # Orange/Yellow
+docker = "#7aa2f7"         # Blue
+
+[symbols]
+# Starship-like symbols
+prompt_success = "❯"
+prompt_error = "❯"
+git_branch = ""
+git_staged = "+"
+git_modified = "!"
+git_untracked = "?"
+git_deleted = "✘"
+separator = ""
+python = "🐍"
+node = "⬢"
+rust = "🦀"
+docker = "🐳"
+
+[templates]
+# Single-line prompt with optional newline before
+# Format: [user@host] directory (git) [modules]
+# newline
+# prompt>
+
+left = """(fg #9ece6a){{user}}(/fg)(fg #565f89)@(/fg)(fg #7aa2f7){{host}}(/fg) (fg #7dcfff){{pwd_short}}(/fg){{#if git_branch}} (fg #565f89)on(/fg) {{#if (gt git_modified 0)}}(fg #e0af68){{git_branch}}(/fg){{else}}(fg #9ece6a){{git_branch}}(/fg){{/if}}{{#if (gt git_staged 0)}} (fg #9ece6a)+{{git_staged}}(/fg){{/if}}{{#if (gt git_modified 0)}} (fg #e0af68)!{{git_modified}}(/fg){{/if}}{{#if (gt git_untracked 0)}} (fg #f7768e)?{{git_untracked}}(/fg){{/if}}{{#if (gt git_deleted 0)}} (fg #f7768e)✘{{git_deleted}}(/fg){{/if}}{{/if}}{{#if modules}}{{#each modules}} (fg #565f89)[(/fg)(fg #7dcfff){{this.content}}(/fg)(fg #565f89)](/fg){{/each}}{{/if}}"""
+
+# Right side shows execution time if > 100ms
+right = """{{#if (gt execution_time_ms 100)}}{{#if (lt execution_time_ms 1000)}}(fg #9ece6a){{execution_time_ms}}ms(/fg){{else}}{{#if (lt execution_time_s 5)}}(fg #e0af68){{execution_time_s}}s(/fg){{else}}(fg #f7768e){{execution_time_s}}s(/fg){{/if}}{{/if}}{{/if}}"""
+
+# Main prompt with line break
+main = """{{first_line}}
+{{#if (eq exit_code 0)}}(fg #9ece6a)(bold)❯(/bold)(/fg) {{else}}(fg #f7768e)(bold)❯(/bold)(/fg) {{/if}}"""
+
+# Transient prompt - just the arrow
+transient = """{{#if (eq exit_code 0)}}(fg #9ece6a)❯(/fg) {{else}}(fg #f7768e)❯(/fg) {{/if}}"""
+
+# Example output:
+# user@host ~/projects/zush on main !2 ?1 [🦀 zush-prompt]        123ms
+# ❯

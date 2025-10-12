@@ -566,6 +566,10 @@ fn render_prompt(
             context.insert("host".to_string(), json!(host));
         } else if let Ok(hostname) = std::env::var("HOSTNAME") {
             context.insert("host".to_string(), json!(hostname));
+        } else {
+            // Fallback to whoami crate for hostname
+            let hostname = whoami::fallible::hostname().unwrap_or_else(|_| "localhost".to_string());
+            context.insert("host".to_string(), json!(hostname));
         }
     }
 

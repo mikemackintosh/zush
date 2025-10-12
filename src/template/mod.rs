@@ -5,6 +5,9 @@ use serde_json::Value;
 use anyhow::{Result, Context as AnyhowContext};
 use crate::color::Color;
 
+mod preprocessor;
+pub use preprocessor::TemplatePreprocessor;
+
 /// Template engine for prompt rendering
 pub struct TemplateEngine {
     handlebars: Handlebars<'static>,
@@ -41,10 +44,13 @@ impl TemplateEngine {
         })
     }
 
-    /// Register a template
+    /// Register a template (with preprocessing for simplified syntax)
     pub fn register_template(&mut self, name: &str, template: &str) -> Result<()> {
+        // Preprocess the template to convert simplified syntax
+        let processed = TemplatePreprocessor::preprocess(template)?;
+
         self.handlebars
-            .register_template_string(name, template)
+            .register_template_string(name, &processed)
             .with_context(|| format!("Failed to register template: {}", name))?;
         Ok(())
     }
@@ -78,10 +84,13 @@ impl TemplateEngine {
         Ok(result)
     }
 
-    /// Render a template string directly
+    /// Render a template string directly (with preprocessing for simplified syntax)
     pub fn render_string(&self, template: &str) -> Result<String> {
+        // Preprocess the template to convert simplified syntax
+        let processed = TemplatePreprocessor::preprocess(template)?;
+
         let result = self.handlebars
-            .render_template(template, &self.context_data)
+            .render_template(&processed, &self.context_data)
             .with_context(|| "Failed to render template string")?;
         Ok(result)
     }
@@ -331,5 +340,43 @@ mod tests {
         assert!(result.contains("LEFT"));
         assert!(result.contains("RIGHT"));
         println!("Line helper output: {}", result);
+    }
+
+    #[test]
+    fn test_simplified_syntax() {
+        let mut engine = TemplateEngine::new().unwrap();
+
+        // Test bold with simplified syntax
+        engine.register_template("test_bold", "(bold)Hello World(/bold)").unwrap();
+        let result = engine.render("test_bold").unwrap();
+        assert!(result.contains("\x1b[1m"));
+        assert!(result.contains("Hello World"));
+        assert!(result.contains("\x1b[22m"));
+        println!("Bold test: {:?}", result);
+
+        // Test color with simplified syntax
+        engine.register_template("test_color", "(fg #ff0000)Red Text(/fg)").unwrap();
+        let result = engine.render("test_color").unwrap();
+        assert!(result.contains("\x1b[38;2;255;0;0m"));
+        assert!(result.contains("Red Text"));
+        println!("Color test: {:?}", result);
+
+        // Test mixed syntax (simplified + handlebars variables)
+        engine.register_template("test_mixed", "(bold)User: {{user}}(/bold)").unwrap();
+        engine.set_value("user", json!("testuser"));
+        let result = engine.render("test_mixed").unwrap();
+        assert!(result.contains("\x1b[1m"));
+        assert!(result.contains("testuser"));
+        assert!(result.contains("\x1b[22m"));
+        println!("Mixed test: {:?}", result);
+
+        // Test nested styles
+        engine.register_template("test_nested", "(bold)(fg #00ff00)Green Bold(/fg) Still Bold(/bold)").unwrap();
+        let result = engine.render("test_nested").unwrap();
+        assert!(result.contains("\x1b[1m"));
+        assert!(result.contains("\x1b[38;2;0;255;0m"));
+        assert!(result.contains("Green Bold"));
+        assert!(result.contains("Still Bold"));
+        println!("Nested test: {:?}", result);
     }
 }

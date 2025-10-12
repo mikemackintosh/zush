@@ -1,0 +1,29 @@
+# Minimal Theme
+# A clean, simple single-line prompt with beautiful colors
+
+name = "minimal"
+description = "Clean and simple single-line prompt"
+author = "Zush"
+version = "2.0.0"
+
+[colors]
+# Beautiful minimal color scheme
+blue = "#3b82f6"           # Nice blue
+green = "#10b981"          # Emerald green
+yellow = "#f59e0b"         # Amber
+red = "#ef4444"            # Red
+gray = "#6b7280"           # Gray
+cyan = "#06b6d4"           # Cyan
+purple = "#8b5cf6"         # Purple
+white = "#f9fafb"          # Off white
+dark_gray = "#374151"      # Dark gray
+
+[symbols]
+prompt_arrow = "❯"
+git_branch = ""            # Git icon (keeping UTF-8)
+separator = "/"
+
+[templates]
+main = """{{color colors.cyan pwd_short}} {{#if git_branch}}{{color colors.purple ""}} {{color colors.purple git_branch}} {{/if}}{{#if (eq exit_code 0)}}{{color colors.green "❯"}}{{reset}} {{else}}{{color colors.red "[" }}{{color colors.red exit_code}}{{color colors.red "] ❯"}}{{reset}} {{/if}}"""
+
+transient = """{{color colors.dark_gray "❯"}}{{reset}} """

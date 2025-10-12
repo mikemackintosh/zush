@@ -1,0 +1,83 @@
+# Catppuccin Powerline Theme (Mocha flavor)
+# Inspired by https://starship.rs/presets/catppuccin-powerline
+# Beautiful powerline-style prompt with Catppuccin color palette
+
+name = "catppuccin"
+description = "Catppuccin Mocha powerline theme with smooth color transitions"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+# Catppuccin Mocha palette
+# Base colors
+rosewater = "#f5e0dc"
+flamingo = "#f2cdcd"
+pink = "#f5c2e7"
+mauve = "#cba6f7"
+red = "#f38ba8"
+maroon = "#eba0ac"
+peach = "#fab387"
+yellow = "#f9e2af"
+green = "#a6e3a1"
+teal = "#94e2d5"
+sky = "#89dceb"
+sapphire = "#74c7ec"
+blue = "#89b4fa"
+lavender = "#b4befe"
+
+# Text colors
+text = "#cdd6f4"
+subtext1 = "#bac2de"
+subtext0 = "#a6adc8"
+overlay2 = "#9399b2"
+overlay1 = "#7f849c"
+overlay0 = "#6c7086"
+surface2 = "#585b70"
+surface1 = "#45475a"
+surface0 = "#313244"
+
+# Base colors
+base = "#1e1e2e"
+mantle = "#181825"
+crust = "#11111b"
+
+[symbols]
+# Powerline separators
+sep_right = ""
+sep_left = ""
+sep_thin_right = ""
+sep_thin_left = ""
+
+# Module icons
+folder = "󰉋"
+git_branch = ""
+git_added = "+"
+git_modified = "~"
+git_deleted = "-"
+git_untracked = "?"
+python = ""
+node = ""
+rust = ""
+docker = "󰡨"
+prompt_arrow = ""
+
+[templates]
+# Powerline style with seamless color transitions
+# Format: [os/user][directory][git][modules][time]
+# Each segment flows into the next with color-matched separators
+
+left = """(bg #f38ba8)(fg #11111b)(bold) {{user}} (/bold)(/fg)(/bg)(bg #fab387)(fg #f38ba8)(/fg)(fg #11111b)(bold) 󰉋 {{pwd_short}} (/bold)(/fg)(/bg){{#if git_branch}}(bg #f9e2af)(fg #fab387)(/fg)(fg #11111b)(bold)  {{git_branch}}(/bold){{#if (gt git_staged 0)}} (fg #a6e3a1)+{{git_staged}}(/fg){{/if}}{{#if (gt git_modified 0)}} (fg #f9e2af)~{{git_modified}}(/fg){{/if}}{{#if (gt git_untracked 0)}} (fg #f38ba8)?{{git_untracked}}(/fg){{/if}}{{#if (gt git_deleted 0)}} (fg #f38ba8)-{{git_deleted}}(/fg){{/if}} (/fg)(/bg)(bg #a6e3a1)(fg #f9e2af)(/fg){{else}}(bg #a6e3a1)(fg #fab387)(/fg){{/if}}{{#if modules}}{{#each modules}}(fg #11111b)(bold) {{this.content}} (/bold)(/fg){{/each}}(/bg)(bg #74c7ec)(fg #a6e3a1)(/fg){{else}}(/bg)(bg #74c7ec)(fg #a6e3a1)(/fg){{/if}}(fg #11111b)(bold)  {{time}} (/bold)(/fg)(/bg)(fg #74c7ec)(/fg)"""
+
+# Right side is empty for powerline - everything is on left
+right = """"""
+
+# Main prompt with just the arrow on second line
+main = """{{first_line}}
+{{#if (eq exit_code 0)}}(fg #a6e3a1)(bold)(/bold)(/fg) {{else}}(fg #f38ba8)(bold)(/bold)(/fg) {{/if}}"""
+
+# Transient prompt - simplified arrow
+transient = """{{#if (eq exit_code 0)}}(fg #a6e3a1)(/fg) {{else}}(fg #f38ba8)(/fg) {{/if}}"""
+
+# Example output:
+#  duppster 󰉋 ~/projects/zush  main +2 ~1  🦀 zush-prompt  16:30:45
+#

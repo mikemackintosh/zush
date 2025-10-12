@@ -1,0 +1,50 @@
+# Split Theme
+# Left-aligned powerline prompt with right-aligned timestamp and execution duration
+
+name = "split"
+description = "Split prompt with powerline left and info right"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+# Powerline segment colors (Nord-inspired)
+bg_user = "#5e81ac"        # Blue
+bg_pwd = "#88c0d0"         # Cyan
+bg_git = "#a3be8c"         # Green
+bg_git_dirty = "#d08770"   # Orange
+
+# Right side colors
+bg_time = "#4c566a"        # Dark gray
+bg_duration = "#bf616a"    # Red (slow)
+bg_duration_ok = "#a3be8c" # Green (fast)
+
+fg_light = "#eceff4"       # Almost white
+fg_dark = "#2e3440"        # Almost black
+
+# Status colors
+red = "#bf616a"            # Error red
+green = "#a3be8c"          # Success green
+yellow = "#ebcb8b"         # Warning yellow
+orange = "#d08770"         # Info orange
+cyan = "#88c0d0"           # Info cyan
+purple = "#b48ead"         # Purple
+
+[symbols]
+sep = ""                  # Powerline arrow
+git = ""                  # Git icon
+folder = ""               # Folder icon
+clock = ""                # Clock icon
+timer = ""                # Timer icon
+
+[templates]
+# Left side content (powerline segments)
+left = """{{segment colors.bg_user colors.fg_light " "}}{{segment colors.bg_user colors.fg_light user}}{{segment colors.bg_user colors.fg_light "@"}}{{segment colors.bg_user colors.fg_light host}}{{segment colors.bg_user colors.fg_light " "}}{{bg colors.bg_pwd}}{{fg colors.bg_user}}{{segment colors.bg_pwd colors.fg_dark "  "}}{{segment colors.bg_pwd colors.fg_dark pwd_short}}{{segment colors.bg_pwd colors.fg_dark " "}}{{reset}}{{fg colors.bg_pwd}}{{#if git_branch}} {{bg colors.bg_git}}{{segment colors.bg_git colors.fg_dark "  "}}{{segment colors.bg_git colors.fg_dark git_branch}}{{#if (gt git_staged 0)}} {{bg colors.bg_git}}{{fg colors.green}}●{{fg colors.fg_dark}}{{git_staged}}{{/if}}{{#if (gt git_modified 0)}} {{bg colors.bg_git}}{{fg colors.yellow}}✚{{fg colors.fg_dark}}{{git_modified}}{{/if}}{{#if (gt git_added 0)}} {{bg colors.bg_git}}{{fg colors.green}}+{{fg colors.fg_dark}}{{git_added}}{{/if}}{{#if (gt git_deleted 0)}} {{bg colors.bg_git}}{{fg colors.red}}-{{fg colors.fg_dark}}{{git_deleted}}{{/if}}{{#if (gt git_untracked 0)}} {{bg colors.bg_git}}{{fg colors.fg_dark}}…{{git_untracked}}{{/if}}{{#if (gt git_conflicted 0)}} {{bg colors.bg_git}}{{fg colors.red}}✖{{fg colors.fg_dark}}{{git_conflicted}}{{/if}}{{segment colors.bg_git colors.fg_dark " "}}{{reset}}{{fg colors.bg_git}}{{/if}}{{reset}}"""
+
+# Right side content (time and duration)
+right = """{{#if (gt execution_time_ms 1000)}}{{bg colors.bg_duration}}{{fg colors.fg_light}}  {{execution_time_s}}s {{reset}}{{else}}{{bg colors.bg_duration_ok}}{{fg colors.fg_dark}}  {{execution_time_ms}}ms {{reset}}{{/if}}{{bg colors.bg_time}}{{fg colors.fg_light}}  {{time}} {{reset}}"""
+
+# Main prompt combines left and right with dynamic spacing (built in Rust)
+main = """{{first_line}}
+{{#if (eq exit_code 0)}}{{color colors.green "❯"}} {{else}}{{color colors.red "["}}{{exit_code}}{{color colors.red "] ❯"}} {{/if}}"""
+
+transient = """{{#if (eq exit_code 0)}}{{color colors.green "❯"}} {{else}}{{color colors.red "❯"}} {{/if}}"""
