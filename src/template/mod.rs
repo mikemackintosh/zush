@@ -30,6 +30,7 @@ impl TemplateEngine {
         handlebars.register_helper("pad_left", Box::new(pad_left_helper));
         handlebars.register_helper("pad_right", Box::new(pad_right_helper));
         handlebars.register_helper("center", Box::new(center_helper));
+        handlebars.register_helper("line", Box::new(line_helper));
 
         // Disable HTML escaping for terminal output
         handlebars.register_escape_fn(handlebars::no_escape);
@@ -260,9 +261,43 @@ fn center_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext,
     Ok(())
 }
 
+/// Line helper: {{line terminal_width "left_content" "right_content"}}
+/// Renders a line with left and right content, filling the space between
+fn line_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    use crate::buffer::TerminalBuffer;
+
+    let params = h.params();
+    if params.len() < 3 {
+        return Ok(());
+    }
+
+    let terminal_width = params[0].value().as_u64().unwrap_or(80) as usize;
+    let left = params[1].value().as_str().unwrap_or("");
+    let right = params[2].value().as_str().unwrap_or("");
+
+    // Calculate visible width (stripping ANSI codes)
+    let left_visible = TerminalBuffer::visible_width(left);
+    let right_visible = TerminalBuffer::visible_width(right);
+
+    // Calculate spacing needed
+    let total_content = left_visible + right_visible;
+
+    if total_content >= terminal_width {
+        // No space for padding, just output left and right
+        write!(out, "{}{}", left, right)?;
+    } else {
+        // Add spacing between left and right
+        let spacing = terminal_width - total_content;
+        write!(out, "{}{:width$}{}", left, "", right, width = spacing)?;
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn test_template_rendering() {
@@ -284,5 +319,17 @@ mod tests {
         let result = engine.render("test").unwrap();
         assert!(result.contains("\x1b[38;2;255;0;0m"));
         assert!(result.contains("Red Text"));
+    }
+
+    #[test]
+    fn test_line_helper() {
+        let mut engine = TemplateEngine::new().unwrap();
+
+        engine.register_template("test", r##"{{line 80 "LEFT" "RIGHT"}}"##).unwrap();
+
+        let result = engine.render("test").unwrap();
+        assert!(result.contains("LEFT"));
+        assert!(result.contains("RIGHT"));
+        println!("Line helper output: {}", result);
     }
 }

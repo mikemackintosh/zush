@@ -106,7 +106,7 @@ fn print_init_script(shell: &str) -> Result<()> {
 ZUSH_PROMPT_BIN="${ZUSH_PROMPT_BIN:-zush-prompt}"
 
 # Theme management
-typeset -g ZUSH_CURRENT_THEME="${ZUSH_CURRENT_THEME:-dcs}"
+typeset -g ZUSH_CURRENT_THEME="${ZUSH_CURRENT_THEME:-split}"
 
 # Function to switch themes dynamically
 zush-theme() {
@@ -134,8 +134,41 @@ typeset -g ZUSH_CMD_START_TIME=0
 typeset -g ZUSH_CMD_DURATION=0
 
 # Preexec hook - called before command execution
+# Arguments: $1 = command line, $2 = command string, $3 = expanded command
 zush_preexec() {
     ZUSH_CMD_START_TIME=$EPOCHREALTIME
+
+    # Capture the command that's about to be executed
+    local cmd="$1"
+
+    # Rewrite the current prompt to transient version before command executes
+    # Count how many lines the prompt takes (for split theme it's 2 lines)
+    local prompt_lines=2
+
+    # Build minimal context for transient prompt
+    local theme_args=""
+    if [[ -n "$ZUSH_CURRENT_THEME" ]]; then
+        theme_args="--theme $ZUSH_CURRENT_THEME"
+    fi
+
+    local context_json=$(cat <<EOF
+{
+    "time": "$(date +%H:%M:%S)"
+}
+EOF
+    )
+
+    # Render transient prompt (without Zsh escaping for raw terminal output)
+    local transient_prompt=$($ZUSH_PROMPT_BIN --template transient --format raw $theme_args prompt \
+        --context "$context_json" \
+        --exit-code $ZUSH_LAST_EXIT_CODE \
+        --execution-time $ZUSH_CMD_DURATION)
+
+    # Move cursor up to beginning of prompt, clear lines, and print transient version + command
+    # \e[<n>A moves cursor up n lines
+    # \e[0G moves cursor to beginning of line
+    # \e[0J clears from cursor to end of screen
+    printf '\e[%dA\e[0G\e[0J%s%s\n' "$prompt_lines" "$transient_prompt" "$cmd"
 }
 
 # Precmd hook - called before prompt display
@@ -212,7 +245,6 @@ zush_prompt() {
     "virtual_env": "${VIRTUAL_ENV:+$(basename $VIRTUAL_ENV)}",
     "jobs": "$(jobs | wc -l | tr -d ' ')",
     "history_number": "$HISTCMD",
-    "terminal_width": "$(tput cols)",
     "time": "$(date +%H:%M:%S)"
 }
 EOF
@@ -224,6 +256,8 @@ EOF
         theme_args="--theme $ZUSH_CURRENT_THEME"
     fi
 
+    # Always use main template for the new prompt
+    # The transient prompt is rendered in preexec for the previous prompt
     $ZUSH_PROMPT_BIN --template main --format zsh $theme_args prompt \
         --context "$context_json" \
         --exit-code $ZUSH_LAST_EXIT_CODE \
@@ -256,10 +290,26 @@ EOF
 add-zsh-hook preexec zush_preexec
 add-zsh-hook precmd zush_precmd
 
+# Handle terminal resize - force prompt redraw
+TRAPWINCH() {
+    zle && zle reset-prompt
+}
+
 # Set prompts
 setopt PROMPT_SUBST
 PROMPT='$(zush_prompt)'
-RPROMPT='$(zush_rprompt)'
+
+# Only set RPROMPT for themes that use it (not split, which handles right content inline)
+case "$ZUSH_CURRENT_THEME" in
+    split)
+        # Split theme handles right content inline, don't use RPROMPT
+        RPROMPT=''
+        ;;
+    *)
+        # Other themes use RPROMPT
+        RPROMPT='$(zush_rprompt)'
+        ;;
+esac
 "#;
 
     println!("{}", script);
@@ -581,7 +631,49 @@ fn render_prompt(
 
     context.insert("symbols".to_string(), json!(symbols));
 
+    // Get terminal width directly from the terminal (not from shell)
+    let terminal_width = if let Some((terminal_size::Width(w), _)) = terminal_size::terminal_size() {
+        w as usize
+    } else {
+        // Fallback to context if terminal size detection fails
+        context.get("terminal_width")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(80) as usize
+    };
+
+    // Always set terminal_width in context for templates that might use it
+    context.insert("terminal_width".to_string(), json!(terminal_width));
+
     // Set context in engine
+    engine.set_context(context.clone());
+
+    // Pre-render left and right templates if they exist, and build complete first line in Rust
+    // This bypasses the need for a line helper in templates (which had registration issues)
+    let left_result = engine.render("left");
+    let right_result = engine.render("right");
+
+    if let (Ok(left_output), Ok(right_output)) = (left_result, right_result) {
+        // Use the terminal width we detected above
+
+        // Calculate visible widths (stripping ANSI codes)
+        let left_visible = TerminalBuffer::visible_width(&left_output);
+        let right_visible = TerminalBuffer::visible_width(&right_output);
+        let total_content = left_visible + right_visible;
+
+        // Build the complete first line with proper spacing
+        let first_line = if total_content >= terminal_width {
+            // No space for padding, just concatenate
+            format!("{}{}", left_output, right_output)
+        } else {
+            // Add spacing between left and right
+            let spacing = terminal_width - total_content;
+            format!("{}{:width$}{}", left_output, "", right_output, width = spacing)
+        };
+
+        context.insert("first_line".to_string(), json!(first_line));
+    }
+
+    // Update context with rendered templates
     engine.set_context(context);
 
     // Render template
