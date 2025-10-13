@@ -13,6 +13,7 @@ pub struct TemplateEngine {
     handlebars: Handlebars<'static>,
     context_data: HashMap<String, Value>,
     colors: HashMap<String, String>,
+    symbols: HashMap<String, String>,
 }
 
 impl TemplateEngine {
@@ -37,6 +38,7 @@ impl TemplateEngine {
         handlebars.register_helper("line", Box::new(line_helper));
         handlebars.register_helper("format_path", Box::new(format_path_helper));
         handlebars.register_helper("format_time", Box::new(format_time_helper));
+        handlebars.register_helper("fill_space", Box::new(fill_space_helper));
 
         // Disable HTML escaping for terminal output
         handlebars.register_escape_fn(handlebars::no_escape);
@@ -45,6 +47,7 @@ impl TemplateEngine {
             handlebars,
             context_data: HashMap::new(),
             colors: HashMap::new(),
+            symbols: HashMap::new(),
         })
     }
 
@@ -53,10 +56,18 @@ impl TemplateEngine {
         self.colors = colors;
     }
 
+    /// Set symbols for template preprocessing (used for @symbol_name shortcuts)
+    pub fn set_symbols(&mut self, symbols: HashMap<String, String>) {
+        self.symbols = symbols;
+    }
+
     /// Register a template (with preprocessing for simplified syntax)
     pub fn register_template(&mut self, name: &str, template: &str) -> Result<()> {
         // Preprocess the template to convert simplified syntax
-        let preprocessor = TemplatePreprocessor::new(self.colors.clone());
+        let preprocessor = TemplatePreprocessor::with_symbols(
+            self.colors.clone(),
+            self.symbols.clone()
+        );
         let processed = preprocessor.preprocess(template)?;
 
         self.handlebars
@@ -97,7 +108,10 @@ impl TemplateEngine {
     /// Render a template string directly (with preprocessing for simplified syntax)
     pub fn render_string(&self, template: &str) -> Result<String> {
         // Preprocess the template to convert simplified syntax
-        let preprocessor = TemplatePreprocessor::new(self.colors.clone());
+        let preprocessor = TemplatePreprocessor::with_symbols(
+            self.colors.clone(),
+            self.symbols.clone()
+        );
         let processed = preprocessor.preprocess(template)?;
 
         let result = self.handlebars
@@ -430,17 +444,75 @@ fn format_time_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderCon
     result = result.replace("%I", &format!("{:02}", now.hour12().1));
     result = result.replace("%p", if now.hour() < 12 { "AM" } else { "PM" });
 
-    // Process style tags
+    // Process style tags (both long and short forms)
     result = result.replace("(bold)", "\x1b[1m");
     result = result.replace("(/bold)", "\x1b[22m");
+    result = result.replace("(b)", "\x1b[1m");
+    result = result.replace("(/b)", "\x1b[22m");
+
     result = result.replace("(dim)", "\x1b[2m");
     result = result.replace("(/dim)", "\x1b[22m");
+    result = result.replace("(d)", "\x1b[2m");
+    result = result.replace("(/d)", "\x1b[22m");
+
     result = result.replace("(italic)", "\x1b[3m");
     result = result.replace("(/italic)", "\x1b[23m");
+    result = result.replace("(i)", "\x1b[3m");
+    result = result.replace("(/i)", "\x1b[23m");
+
     result = result.replace("(underline)", "\x1b[4m");
     result = result.replace("(/underline)", "\x1b[24m");
+    result = result.replace("(u)", "\x1b[4m");
+    result = result.replace("(/u)", "\x1b[24m");
 
     write!(out, "{}", result)?;
+    Ok(())
+}
+
+/// Fill space helper: {{fill_space terminal_width left_content right_content offset}}
+/// Calculates how much space is needed between left and right content to fill the terminal width.
+/// This is useful for creating full-width backgrounds with content on both sides.
+///
+/// Parameters:
+///   - terminal_width: The width of the terminal
+///   - left_content: The content on the left side (plain text or with ANSI codes)
+///   - right_content: The content on the right side (plain text or with ANSI codes)
+///   - offset (optional): Additional characters to subtract (for content not in left/right, like status icons)
+///
+/// Example:
+///   {{fill_space terminal_width pwd_short " / " 4}}
+///   This accounts for pwd_short (left), " / " (right), and 4 extra characters (status icon segment)
+fn fill_space_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    use crate::buffer::TerminalBuffer;
+
+    let terminal_width = h.param(0)
+        .and_then(|v| v.value().as_u64())
+        .unwrap_or(80) as usize;
+
+    let left_content = h.param(1)
+        .and_then(|v| v.value().as_str())
+        .unwrap_or("");
+
+    let right_content = h.param(2)
+        .and_then(|v| v.value().as_str())
+        .unwrap_or("");
+
+    let offset = h.param(3)
+        .and_then(|v| v.value().as_u64())
+        .unwrap_or(0) as usize;
+
+    // Calculate visible widths (stripping ANSI codes)
+    let left_visible = TerminalBuffer::visible_width(left_content);
+    let right_visible = TerminalBuffer::visible_width(right_content);
+
+    // Calculate how many spaces we need to fill the gap
+    // Add the offset to account for other content on the line (like status icons)
+    let total_content = left_visible + right_visible + offset;
+    if total_content < terminal_width {
+        let spaces_needed = terminal_width - total_content;
+        write!(out, "{:width$}", "", width = spaces_needed)?;
+    }
+
     Ok(())
 }
 

@@ -507,6 +507,26 @@ fn render_prompt(
     // Set colors in engine for preprocessing
     engine.set_colors(colors_for_preprocessing);
 
+    // Parse symbols from theme/config for @symbol_name shortcuts
+    // This allows templates to use @symbol_name instead of {{symbols.symbol_name}}
+    let mut symbols_for_preprocessing = HashMap::new();
+    if let Some(toml_str) = source {
+        if let Ok(parsed) = toml::from_str::<toml::Value>(toml_str) {
+            if let Some(symbols_table) = parsed.get("symbols").and_then(|v| v.as_table()) {
+                for (key, value) in symbols_table {
+                    if let Some(symbol_str) = value.as_str() {
+                        // Parse Unicode escape sequences
+                        let parsed_symbol = parse_unicode_escapes(symbol_str);
+                        symbols_for_preprocessing.insert(key.clone(), parsed_symbol);
+                    }
+                }
+            }
+        }
+    }
+
+    // Set symbols in engine for preprocessing
+    engine.set_symbols(symbols_for_preprocessing);
+
     // Load templates from theme, config, or defaults
     let theme_or_config = theme_str.as_ref().or(config_str.as_ref());
 

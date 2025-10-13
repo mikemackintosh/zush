@@ -3,19 +3,93 @@ use std::collections::HashMap;
 
 /// Preprocessor for simplified template syntax
 /// Converts simplified syntax like (bold)text(/bold) to ANSI escape codes
+/// Also handles @symbol_name shorthand for symbols
 pub struct TemplatePreprocessor {
     colors: HashMap<String, String>,
+    symbols: HashMap<String, String>,
 }
 
 impl TemplatePreprocessor {
-    /// Create a new preprocessor with a color map
+    /// Create a new preprocessor with color and symbol maps
     pub fn new(colors: HashMap<String, String>) -> Self {
-        Self { colors }
+        Self {
+            colors,
+            symbols: HashMap::new(),
+        }
+    }
+
+    /// Create a new preprocessor with both colors and symbols
+    pub fn with_symbols(colors: HashMap<String, String>, symbols: HashMap<String, String>) -> Self {
+        Self { colors, symbols }
     }
 
     /// Preprocess a template string, converting simplified syntax to Handlebars
+    /// This includes:
+    /// - Style tags: (b)text(/b), (fg color)text(/fg), etc.
+    /// - Symbol shorthand: @symbol_name
     pub fn preprocess(&self, template: &str) -> Result<String> {
-        self.process_styles(template)
+        // First, replace @symbol shortcuts
+        let with_symbols = self.process_symbol_shortcuts(template)?;
+        // Then process style tags
+        self.process_styles(&with_symbols)
+    }
+
+    /// Process @symbol_name shortcuts, replacing them with the actual symbol characters
+    /// Theme symbols take precedence over built-in symbols
+    fn process_symbol_shortcuts(&self, template: &str) -> Result<String> {
+        let mut output = String::new();
+        let chars: Vec<char> = template.chars().collect();
+        let mut i = 0;
+
+        while i < chars.len() {
+            // Check for handlebars blocks - pass through without processing
+            if i + 1 < chars.len() && chars[i] == '{' && chars[i + 1] == '{' {
+                output.push(chars[i]);
+                i += 1;
+                while i < chars.len() {
+                    output.push(chars[i]);
+                    if i + 1 < chars.len() && chars[i] == '}' && chars[i + 1] == '}' {
+                        i += 1;
+                        output.push(chars[i]);
+                        i += 1;
+                        break;
+                    }
+                    i += 1;
+                }
+                continue;
+            }
+
+            // Check for @symbol_name syntax
+            if chars[i] == '@' {
+                i += 1;
+                let mut symbol_name = String::new();
+
+                // Parse symbol name (alphanumeric and underscore)
+                while i < chars.len() && (chars[i].is_alphanumeric() || chars[i] == '_') {
+                    symbol_name.push(chars[i]);
+                    i += 1;
+                }
+
+                if !symbol_name.is_empty() {
+                    // Try theme symbols first, then built-in
+                    if let Some(symbol_value) = self.symbols.get(&symbol_name) {
+                        output.push_str(symbol_value);
+                    } else if let Ok(builtin_symbol) = Self::resolve_symbol(&symbol_name) {
+                        output.push_str(&builtin_symbol);
+                    } else {
+                        bail!("Unknown symbol '@{}'. Define it in [symbols] section or use a built-in symbol.", symbol_name);
+                    }
+                } else {
+                    // Just a standalone @, output it
+                    output.push('@');
+                }
+            } else {
+                output.push(chars[i]);
+                i += 1;
+            }
+        }
+
+        Ok(output)
     }
 
     /// Process style tags like (bold), (dim), (fg #ff0000), etc.
@@ -163,7 +237,7 @@ impl TemplatePreprocessor {
             "bold" | "b" => Ok("\x1b[1m".to_string()),
             "dim" | "d" => Ok("\x1b[2m".to_string()),
             "italic" | "em" | "i" => Ok("\x1b[3m".to_string()),
-            "underline" | "u "=> Ok("\x1b[4m".to_string()),
+            "underline" | "u" => Ok("\x1b[4m".to_string()),
             "fg" => {
                 if let Some(ref args) = tag.args {
                     let color = self.resolve_color(args)?;
@@ -246,12 +320,12 @@ impl TemplatePreprocessor {
             "triangle_right" | "tri_right" | "arrow_right" => "\u{e0b0}",  //
             "triangle_left" | "tri_left" | "arrow_left" => "\u{e0b2}",     //
 
-            "inverted_triangle_right" | "inv_tri_right" | "inv_arrow_right" => "\u{e0d7}", //
-            "inverted_triangle_left" | "inv_tri_left" | "inv_arrow_left" => "\u{e0d6}",  //
+            "inverted_triangle_left" | "inv_tri_right" | "inv_arrow_right" => "\u{e0d7}", //
+            "inverted_triangle_right" | "inv_tri_left" | "inv_arrow_left" => "\u{e0d6}",  //
             
             // Powerline pills/rounded (flame-like)
-            "pill_right" | "round_right" => "\u{e0b4}",    //
             "pill_left" | "round_left" => "\u{e0b6}",       //
+            "pill_right" | "round_right" => "\u{e0b4}",    //
 
             // Flame
             "flame_left" => "\u{e0c0}",                                      //
