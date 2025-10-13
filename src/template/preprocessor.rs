@@ -4,9 +4,22 @@ use std::collections::HashMap;
 /// Preprocessor for simplified template syntax
 /// Converts simplified syntax like (bold)text(/bold) to ANSI escape codes
 /// Also handles @symbol_name shorthand for symbols
+/// And handles {{segment}}...{{endsegment}} blocks with {{seg:name}} references
 pub struct TemplatePreprocessor {
     colors: HashMap<String, String>,
     symbols: HashMap<String, String>,
+    segments: HashMap<String, SegmentDef>,
+}
+
+/// Parsed segment definition from {{segment}} blocks
+#[derive(Debug, Clone)]
+struct SegmentDef {
+    name: String,
+    bg: String,
+    fg: String,
+    content: String,
+    sep: Option<String>,
+    left_cap: Option<String>,
 }
 
 impl TemplatePreprocessor {
@@ -15,23 +28,230 @@ impl TemplatePreprocessor {
         Self {
             colors,
             symbols: HashMap::new(),
+            segments: HashMap::new(),
         }
     }
 
     /// Create a new preprocessor with both colors and symbols
     pub fn with_symbols(colors: HashMap<String, String>, symbols: HashMap<String, String>) -> Self {
-        Self { colors, symbols }
+        Self {
+            colors,
+            symbols,
+            segments: HashMap::new(),
+        }
     }
 
     /// Preprocess a template string, converting simplified syntax to Handlebars
     /// This includes:
-    /// - Style tags: (b)text(/b), (fg color)text(/fg), etc.
+    /// - Segment definitions: {{segment "name" ...}}...{{endsegment}}
+    /// - Segment references: {{seg:name}}
     /// - Symbol shorthand: @symbol_name
-    pub fn preprocess(&self, template: &str) -> Result<String> {
-        // First, replace @symbol shortcuts
-        let with_symbols = self.process_symbol_shortcuts(template)?;
-        // Then process style tags
+    /// - Style tags: (b)text(/b), (fg color)text(/fg), etc.
+    pub fn preprocess(&mut self, template: &str) -> Result<String> {
+        // First, extract and remove segment definitions
+        let (without_segments, segments) = self.extract_segments(template)?;
+        self.segments = segments;
+
+        // Replace segment references with their content
+        let with_segments = self.expand_segment_references(&without_segments)?;
+
+        // Replace @symbol shortcuts
+        let with_symbols = self.process_symbol_shortcuts(&with_segments)?;
+
+        // Finally process style tags
         self.process_styles(&with_symbols)
+    }
+
+    /// Extract {{segment}}...{{endsegment}} blocks and remove them from template
+    /// Returns (template_without_definitions, segment_map)
+    fn extract_segments(&self, template: &str) -> Result<(String, HashMap<String, SegmentDef>)> {
+        let mut result = String::new();
+        let mut segments = HashMap::new();
+        let chars: Vec<char> = template.chars().collect();
+        let mut i = 0;
+
+        while i < chars.len() {
+            // Look for {{segment
+            if i + 9 < chars.len() &&
+               chars[i..i+2] == ['{', '{'] &&
+               chars[i+2..i+9].iter().collect::<String>() == "segment" {
+
+                // Parse segment definition
+                let seg_start = i;
+                i += 9; // Skip "{{segment"
+
+                // Find the end of opening tag }}
+                let mut tag_end = i;
+                while tag_end < chars.len() && !(chars[tag_end] == '}' && chars[tag_end+1] == '}') {
+                    tag_end += 1;
+                }
+
+                if tag_end >= chars.len() {
+                    bail!("Unclosed {{{{segment}}}} tag");
+                }
+
+                // Extract parameters from opening tag
+                let params_str: String = chars[i..tag_end].iter().collect();
+                let segment_def = self.parse_segment_params(&params_str)?;
+
+                // Find {{endsegment}}
+                i = tag_end + 2; // Skip }}
+                let content_start = i;
+                let mut content_end = i;
+                let mut depth = 1;
+
+                while content_end < chars.len() && depth > 0 {
+                    if content_end + 13 < chars.len() &&
+                       chars[content_end..content_end+2] == ['{', '{'] &&
+                       chars[content_end+2..content_end+12].iter().collect::<String>() == "endsegment" {
+                        depth -= 1;
+                        if depth == 0 {
+                            break;
+                        }
+                    } else if content_end + 9 < chars.len() &&
+                              chars[content_end..content_end+2] == ['{', '{'] &&
+                              chars[content_end+2..content_end+9].iter().collect::<String>() == "segment" {
+                        depth += 1;
+                    }
+                    content_end += 1;
+                }
+
+                if depth > 0 {
+                    bail!("Unclosed {{{{segment}}}} block - missing {{{{endsegment}}}}");
+                }
+
+                // Extract content
+                let content: String = chars[content_start..content_end].iter().collect();
+                let mut seg_def = segment_def;
+                seg_def.content = content.trim().to_string();
+
+                segments.insert(seg_def.name.clone(), seg_def);
+
+                // Skip past {{endsegment}}
+                i = content_end + 14; // {{endsegment}} is 14 chars
+            } else {
+                result.push(chars[i]);
+                i += 1;
+            }
+        }
+
+        Ok((result, segments))
+    }
+
+    /// Parse segment parameters from the opening tag
+    /// Format: "name" bg="color" fg="color" sep="shape" left_cap="shape"
+    fn parse_segment_params(&self, params: &str) -> Result<SegmentDef> {
+        let params = params.trim();
+
+        // Extract name (first quoted string)
+        let name_start = params.find('"').ok_or_else(|| anyhow::anyhow!("Segment must have a name in quotes"))?;
+        let name_end = params[name_start+1..].find('"').ok_or_else(|| anyhow::anyhow!("Unclosed segment name quote"))?;
+        let name = params[name_start+1..name_start+1+name_end].to_string();
+
+        // Extract other parameters
+        let bg = self.extract_param(params, "bg=")?;
+        let fg = self.extract_param(params, "fg=")?;
+        let sep = self.extract_param(params, "sep=").ok();
+        let left_cap = self.extract_param(params, "left_cap=").ok();
+
+        Ok(SegmentDef {
+            name,
+            bg,
+            fg,
+            content: String::new(), // Will be filled later
+            sep,
+            left_cap,
+        })
+    }
+
+    /// Extract a parameter value from the params string
+    fn extract_param(&self, params: &str, key: &str) -> Result<String> {
+        let key_pos = params.find(key).ok_or_else(|| anyhow::anyhow!("Missing required parameter: {}", key))?;
+        let value_start = key_pos + key.len();
+        let start_quote = params[value_start..].find('"').ok_or_else(|| anyhow::anyhow!("Parameter {} must be quoted", key))?;
+        let end_quote = params[value_start+start_quote+1..].find('"').ok_or_else(|| anyhow::anyhow!("Unclosed quote for parameter {}", key))?;
+
+        Ok(params[value_start+start_quote+1..value_start+start_quote+1+end_quote].to_string())
+    }
+
+    /// Expand {{seg:name}} references with segment content
+    fn expand_segment_references(&self, template: &str) -> Result<String> {
+        let mut result = String::new();
+        let chars: Vec<char> = template.chars().collect();
+        let mut i = 0;
+
+        while i < chars.len() {
+            // Look for {{seg:
+            if i + 6 < chars.len() &&
+               chars[i..i+2] == ['{', '{'] &&
+               chars[i+2..i+6] == ['s', 'e', 'g', ':'] {
+
+                i += 6; // Skip "{{seg:"
+
+                // Extract segment name
+                let name_start = i;
+                while i < chars.len() && chars[i] != '}' {
+                    i += 1;
+                }
+
+                if i >= chars.len() || i+1 >= chars.len() || chars[i] != '}' || chars[i+1] != '}' {
+                    bail!("Unclosed {{{{seg:name}}}} reference");
+                }
+
+                let name: String = chars[name_start..i].iter().collect();
+                let name = name.trim();
+
+                // Look up segment and expand it
+                if let Some(segment) = self.segments.get(name) {
+                    let expanded = self.render_segment(segment)?;
+                    result.push_str(&expanded);
+                } else {
+                    bail!("Unknown segment: '{}'. Define it with {{{{segment \"{}\" ...}}}}...{{{{endsegment}}}}", name, name);
+                }
+
+                i += 2; // Skip }}
+            } else {
+                result.push(chars[i]);
+                i += 1;
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Render a segment with its styling
+    fn render_segment(&self, segment: &SegmentDef) -> Result<String> {
+        let mut output = String::new();
+
+        // Add left cap if specified
+        if let Some(ref cap_shape) = segment.left_cap {
+            let cap_symbol = self.get_separator_symbol(cap_shape)?;
+            output.push_str(&format!("(fg {}){}(/fg)", segment.bg, cap_symbol));
+        }
+
+        // Add background and foreground with content
+        output.push_str(&format!("(bg {})(fg {}) {} (/fg)(/bg)", segment.bg, segment.fg, segment.content));
+
+        // Add right separator if specified
+        if let Some(ref sep_shape) = segment.sep {
+            let sep_symbol = self.get_separator_symbol(sep_shape)?;
+            output.push_str(&format!("(fg {}){}(/fg)", segment.bg, sep_symbol));
+        }
+
+        Ok(output)
+    }
+
+    /// Get the separator symbol for a shape name
+    fn get_separator_symbol(&self, shape: &str) -> Result<String> {
+        let symbol = match shape {
+            "sharp" | "triangle" => "@segment_separator",
+            "pill" | "round" => "@pill_left",
+            "slant" => "@slant_right",
+            "flame" => "@flame_right",
+            "none" => "",
+            _ => bail!("Unknown separator shape: {}. Use: sharp, pill, slant, flame, none", shape),
+        };
+        Ok(symbol.to_string())
     }
 
     /// Process @symbol_name shortcuts, replacing them with the actual symbol characters

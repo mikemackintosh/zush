@@ -14,6 +14,7 @@ pub struct TemplateEngine {
     context_data: HashMap<String, Value>,
     colors: HashMap<String, String>,
     symbols: HashMap<String, String>,
+    segments: HashMap<String, SegmentDefinition>,
 }
 
 impl TemplateEngine {
@@ -48,6 +49,7 @@ impl TemplateEngine {
             context_data: HashMap::new(),
             colors: HashMap::new(),
             symbols: HashMap::new(),
+            segments: HashMap::new(),
         })
     }
 
@@ -61,10 +63,15 @@ impl TemplateEngine {
         self.symbols = symbols;
     }
 
+    /// Set segments for reusable prompt components
+    pub fn set_segments(&mut self, segments: HashMap<String, SegmentDefinition>) {
+        self.segments = segments;
+    }
+
     /// Register a template (with preprocessing for simplified syntax)
     pub fn register_template(&mut self, name: &str, template: &str) -> Result<()> {
         // Preprocess the template to convert simplified syntax
-        let preprocessor = TemplatePreprocessor::with_symbols(
+        let mut preprocessor = TemplatePreprocessor::with_symbols(
             self.colors.clone(),
             self.symbols.clone()
         );
@@ -108,7 +115,7 @@ impl TemplateEngine {
     /// Render a template string directly (with preprocessing for simplified syntax)
     pub fn render_string(&self, template: &str) -> Result<String> {
         // Preprocess the template to convert simplified syntax
-        let preprocessor = TemplatePreprocessor::with_symbols(
+        let mut preprocessor = TemplatePreprocessor::with_symbols(
             self.colors.clone(),
             self.symbols.clone()
         );
@@ -130,6 +137,35 @@ pub struct TemplateConfig {
     pub colors: Option<HashMap<String, String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub symbols: Option<HashMap<String, String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub segment: Option<HashMap<String, SegmentDefinition>>,
+}
+
+/// Segment definition for reusable prompt components
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SegmentDefinition {
+    pub bg: String,
+    pub fg: String,
+    pub content: String,
+
+    #[serde(default = "default_sep")]
+    pub sep: String,  // "sharp", "pill", "slant", "flame", "none"
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sep_fg: Option<String>,  // Separator color (defaults to bg)
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub left_cap: Option<String>,  // "pill", "sharp", "slant", "flame", "none"
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub left_cap_fg: Option<String>,  // Left cap color
+
+    #[serde(default)]
+    pub fill: bool,  // Fill rest of line with background
+}
+
+fn default_sep() -> String {
+    "sharp".to_string()
 }
 
 // Helper functions for Handlebars
