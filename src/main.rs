@@ -527,6 +527,48 @@ fn render_prompt(
     // Set symbols in engine for preprocessing
     engine.set_symbols(symbols_for_preprocessing);
 
+    // Parse segments from theme/config for reusable segment definitions
+    // This allows templates to define segments in a [segments] block
+    let mut segments_for_preprocessing = HashMap::new();
+    if let Some(toml_str) = source {
+        if let Ok(parsed) = toml::from_str::<toml::Value>(toml_str) {
+            if let Some(segments_table) = parsed.get("segments").and_then(|v| v.as_table()) {
+                for (segment_name, segment_data) in segments_table {
+                    if let Some(segment_props) = segment_data.as_table() {
+                        // Extract content (required)
+                        if let Some(content) = segment_props.get("content").and_then(|v| v.as_str()) {
+                            let mut segment = template::SegmentDef::new(
+                                segment_name.clone(),
+                                content.to_string()
+                            );
+
+                            // Add optional properties using builder methods
+                            if let Some(bg) = segment_props.get("bg").and_then(|v| v.as_str()) {
+                                segment = segment.with_bg(bg.to_string());
+                            }
+                            if let Some(fg) = segment_props.get("fg").and_then(|v| v.as_str()) {
+                                segment = segment.with_fg(fg.to_string());
+                            }
+                            if let Some(sep) = segment_props.get("sep").and_then(|v| v.as_str()) {
+                                segment = segment.with_sep(sep.to_string());
+                            }
+                            if let Some(left_cap) = segment_props.get("left_cap").and_then(|v| v.as_str()) {
+                                segment = segment.with_left_cap(left_cap.to_string());
+                            }
+
+                            segments_for_preprocessing.insert(segment_name.clone(), segment);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Add pre-defined segments to engine for preprocessing
+    if !segments_for_preprocessing.is_empty() {
+        engine.add_segments(segments_for_preprocessing);
+    }
+
     // Load templates from theme, config, or defaults
     let theme_or_config = theme_str.as_ref().or(config_str.as_ref());
 

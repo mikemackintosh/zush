@@ -6,7 +6,7 @@ use anyhow::{Result, Context as AnyhowContext};
 use crate::color::Color;
 
 mod preprocessor;
-pub use preprocessor::TemplatePreprocessor;
+pub use preprocessor::{TemplatePreprocessor, SegmentDef};
 
 /// Template engine for prompt rendering
 pub struct TemplateEngine {
@@ -14,7 +14,7 @@ pub struct TemplateEngine {
     context_data: HashMap<String, Value>,
     colors: HashMap<String, String>,
     symbols: HashMap<String, String>,
-    segments: HashMap<String, SegmentDefinition>,
+    segments: HashMap<String, SegmentDef>,
 }
 
 impl TemplateEngine {
@@ -63,9 +63,9 @@ impl TemplateEngine {
         self.symbols = symbols;
     }
 
-    /// Set segments for reusable prompt components
-    pub fn set_segments(&mut self, segments: HashMap<String, SegmentDefinition>) {
-        self.segments = segments;
+    /// Add pre-defined segments from TOML configuration
+    pub fn add_segments(&mut self, segments: HashMap<String, SegmentDef>) {
+        self.segments.extend(segments);
     }
 
     /// Register a template (with preprocessing for simplified syntax)
@@ -75,6 +75,8 @@ impl TemplateEngine {
             self.colors.clone(),
             self.symbols.clone()
         );
+        // Add pre-defined segments from TOML
+        preprocessor.add_segments(self.segments.clone());
         let processed = preprocessor.preprocess(template)?;
 
         self.handlebars
@@ -119,6 +121,8 @@ impl TemplateEngine {
             self.colors.clone(),
             self.symbols.clone()
         );
+        // Add pre-defined segments from TOML
+        preprocessor.add_segments(self.segments.clone());
         let processed = preprocessor.preprocess(template)?;
 
         let result = self.handlebars

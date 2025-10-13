@@ -11,15 +11,53 @@ pub struct TemplatePreprocessor {
     segments: HashMap<String, SegmentDef>,
 }
 
-/// Parsed segment definition from {{segment}} blocks
+/// Parsed segment definition from {{segment}} blocks or TOML
 #[derive(Debug, Clone)]
-struct SegmentDef {
-    name: String,
-    bg: String,
-    fg: String,
-    content: String,
-    sep: Option<String>,
-    left_cap: Option<String>,
+pub struct SegmentDef {
+    pub name: String,
+    pub bg: Option<String>,
+    pub fg: Option<String>,
+    pub content: String,
+    pub sep: Option<String>,
+    pub left_cap: Option<String>,
+}
+
+impl SegmentDef {
+    /// Create a new segment definition
+    pub fn new(name: String, content: String) -> Self {
+        Self {
+            name,
+            bg: None,
+            fg: None,
+            content,
+            sep: None,
+            left_cap: None,
+        }
+    }
+
+    /// Set background color
+    pub fn with_bg(mut self, bg: String) -> Self {
+        self.bg = Some(bg);
+        self
+    }
+
+    /// Set foreground color
+    pub fn with_fg(mut self, fg: String) -> Self {
+        self.fg = Some(fg);
+        self
+    }
+
+    /// Set separator shape
+    pub fn with_sep(mut self, sep: String) -> Self {
+        self.sep = Some(sep);
+        self
+    }
+
+    /// Set left cap shape
+    pub fn with_left_cap(mut self, left_cap: String) -> Self {
+        self.left_cap = Some(left_cap);
+        self
+    }
 }
 
 impl TemplatePreprocessor {
@@ -41,6 +79,11 @@ impl TemplatePreprocessor {
         }
     }
 
+    /// Add pre-defined segments from TOML configuration
+    pub fn add_segments(&mut self, segments: HashMap<String, SegmentDef>) {
+        self.segments.extend(segments);
+    }
+
     /// Preprocess a template string, converting simplified syntax to Handlebars
     /// This includes:
     /// - Segment definitions: {{segment "name" ...}}...{{endsegment}}
@@ -50,7 +93,9 @@ impl TemplatePreprocessor {
     pub fn preprocess(&mut self, template: &str) -> Result<String> {
         // First, extract and remove segment definitions
         let (without_segments, segments) = self.extract_segments(template)?;
-        self.segments = segments;
+        // Extend segments instead of replacing - this preserves TOML-defined segments
+        // Template-defined segments can override TOML ones
+        self.segments.extend(segments);
 
         // Replace segment references with their content
         let with_segments = self.expand_segment_references(&without_segments)?;
@@ -148,9 +193,9 @@ impl TemplatePreprocessor {
         let name_end = params[name_start+1..].find('"').ok_or_else(|| anyhow::anyhow!("Unclosed segment name quote"))?;
         let name = params[name_start+1..name_start+1+name_end].to_string();
 
-        // Extract other parameters
-        let bg = self.extract_param(params, "bg=")?;
-        let fg = self.extract_param(params, "fg=")?;
+        // Extract other parameters (all optional)
+        let bg = self.extract_param(params, "bg=").ok();
+        let fg = self.extract_param(params, "fg=").ok();
         let sep = self.extract_param(params, "sep=").ok();
         let left_cap = self.extract_param(params, "left_cap=").ok();
 
@@ -226,16 +271,41 @@ impl TemplatePreprocessor {
         // Add left cap if specified
         if let Some(ref cap_shape) = segment.left_cap {
             let cap_symbol = self.get_separator_symbol(cap_shape)?;
-            output.push_str(&format!("(fg {}){}(/fg)", segment.bg, cap_symbol));
+            if let Some(ref bg) = segment.bg {
+                output.push_str(&format!("(fg {}){}(/fg)", bg, cap_symbol));
+            } else {
+                output.push_str(&cap_symbol);
+            }
         }
 
         // Add background and foreground with content
-        output.push_str(&format!("(bg {})(fg {}) {} (/fg)(/bg)", segment.bg, segment.fg, segment.content));
+        let has_bg = segment.bg.is_some();
+        let has_fg = segment.fg.is_some();
+
+        if has_bg {
+            output.push_str(&format!("(bg {})", segment.bg.as_ref().unwrap()));
+        }
+        if has_fg {
+            output.push_str(&format!("(fg {})", segment.fg.as_ref().unwrap()));
+        }
+
+        output.push_str(&format!(" {} ", segment.content));
+
+        if has_fg {
+            output.push_str("(/fg)");
+        }
+        if has_bg {
+            output.push_str("(/bg)");
+        }
 
         // Add right separator if specified
         if let Some(ref sep_shape) = segment.sep {
             let sep_symbol = self.get_separator_symbol(sep_shape)?;
-            output.push_str(&format!("(fg {}){}(/fg)", segment.bg, sep_symbol));
+            if let Some(ref bg) = segment.bg {
+                output.push_str(&format!("(fg {}){}(/fg)", bg, sep_symbol));
+            } else {
+                output.push_str(&sep_symbol);
+            }
         }
 
         Ok(output)
