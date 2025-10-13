@@ -537,9 +537,19 @@ fn render_prompt(
                     if let Some(segment_props) = segment_data.as_table() {
                         // Extract content (required)
                         if let Some(content) = segment_props.get("content").and_then(|v| v.as_str()) {
+                            // Normalize multiline content: strip leading/trailing whitespace from each line
+                            // and join into a single line. This allows readable multiline TOML without
+                            // inserting actual newlines into the template.
+                            let normalized_content = content
+                                .lines()
+                                .map(|line| line.trim())
+                                .filter(|line| !line.is_empty())
+                                .collect::<Vec<_>>()
+                                .join("");
+
                             let mut segment = template::SegmentDef::new(
                                 segment_name.clone(),
-                                content.to_string()
+                                normalized_content
                             );
 
                             // Add optional properties using builder methods
