@@ -12,6 +12,7 @@ pub use preprocessor::TemplatePreprocessor;
 pub struct TemplateEngine {
     handlebars: Handlebars<'static>,
     context_data: HashMap<String, Value>,
+    colors: HashMap<String, String>,
 }
 
 impl TemplateEngine {
@@ -35,6 +36,7 @@ impl TemplateEngine {
         handlebars.register_helper("center", Box::new(center_helper));
         handlebars.register_helper("line", Box::new(line_helper));
         handlebars.register_helper("format_path", Box::new(format_path_helper));
+        handlebars.register_helper("format_time", Box::new(format_time_helper));
 
         // Disable HTML escaping for terminal output
         handlebars.register_escape_fn(handlebars::no_escape);
@@ -42,13 +44,20 @@ impl TemplateEngine {
         Ok(Self {
             handlebars,
             context_data: HashMap::new(),
+            colors: HashMap::new(),
         })
+    }
+
+    /// Set colors for template preprocessing
+    pub fn set_colors(&mut self, colors: HashMap<String, String>) {
+        self.colors = colors;
     }
 
     /// Register a template (with preprocessing for simplified syntax)
     pub fn register_template(&mut self, name: &str, template: &str) -> Result<()> {
         // Preprocess the template to convert simplified syntax
-        let processed = TemplatePreprocessor::preprocess(template)?;
+        let preprocessor = TemplatePreprocessor::new(self.colors.clone());
+        let processed = preprocessor.preprocess(template)?;
 
         self.handlebars
             .register_template_string(name, &processed)
@@ -88,7 +97,8 @@ impl TemplateEngine {
     /// Render a template string directly (with preprocessing for simplified syntax)
     pub fn render_string(&self, template: &str) -> Result<String> {
         // Preprocess the template to convert simplified syntax
-        let processed = TemplatePreprocessor::preprocess(template)?;
+        let preprocessor = TemplatePreprocessor::new(self.colors.clone());
+        let processed = preprocessor.preprocess(template)?;
 
         let result = self.handlebars
             .render_template(&processed, &self.context_data)
@@ -378,6 +388,57 @@ fn format_path_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderCon
         },
         _ => path.to_string(), // "full" or unknown mode
     };
+
+    write!(out, "{}", result)?;
+    Ok(())
+}
+
+/// Format time helper: {{format_time time "format_string"}}
+/// Format string uses % placeholders for time parts and style tags for formatting:
+///   %H - hours (00-23)
+///   %M - minutes (00-59)
+///   %S - seconds (00-59)
+///   %I - hours 12-hour format (01-12)
+///   %p - AM/PM
+///
+/// Style tags (can wrap any text including time parts):
+///   (bold)...(/bold) - bold text
+///   (dim)...(/dim) - dim/faint text
+///   (italic)...(/italic) - italic text
+///   (underline)...(/underline) - underlined text
+///
+/// Examples:
+///   {{format_time time "(bold)%H:%M:%S(/bold)"}} -> bold timestamp
+///   {{format_time time "(dim)%H(/dim):%M:%S"}} -> dim hour, normal minutes/seconds
+///   {{format_time time "(dim)%H(/dim):(bold)%M:%S(/bold)"}} -> dim hour, bold min:sec
+///   {{format_time time "%I:%M %p"}} -> 12-hour format with AM/PM
+fn format_time_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    use chrono::{Local, Timelike};
+
+    // Get the time string from context (if provided) or use current time
+    let time_str = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
+    let format_str = h.param(1).and_then(|v| v.value().as_str()).unwrap_or("%H:%M:%S");
+
+    // Get current time for formatting
+    let now = Local::now();
+
+    // Replace time placeholders
+    let mut result = format_str.to_string();
+    result = result.replace("%H", &format!("{:02}", now.hour()));
+    result = result.replace("%M", &format!("{:02}", now.minute()));
+    result = result.replace("%S", &format!("{:02}", now.second()));
+    result = result.replace("%I", &format!("{:02}", now.hour12().1));
+    result = result.replace("%p", if now.hour() < 12 { "AM" } else { "PM" });
+
+    // Process style tags
+    result = result.replace("(bold)", "\x1b[1m");
+    result = result.replace("(/bold)", "\x1b[22m");
+    result = result.replace("(dim)", "\x1b[2m");
+    result = result.replace("(/dim)", "\x1b[22m");
+    result = result.replace("(italic)", "\x1b[3m");
+    result = result.replace("(/italic)", "\x1b[23m");
+    result = result.replace("(underline)", "\x1b[4m");
+    result = result.replace("(/underline)", "\x1b[24m");
 
     write!(out, "{}", result)?;
     Ok(())

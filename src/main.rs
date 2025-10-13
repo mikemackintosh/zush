@@ -488,6 +488,25 @@ fn render_prompt(
     // Create template engine
     let mut engine = TemplateEngine::new()?;
 
+    // Parse colors from theme/config FIRST, before loading templates
+    // This allows templates to use named colors in (fg color) and (bg color) tags
+    let mut colors_for_preprocessing = HashMap::new();
+    let source = theme_str.as_ref().or(config_str.as_ref());
+    if let Some(toml_str) = source {
+        if let Ok(parsed) = toml::from_str::<toml::Value>(toml_str) {
+            if let Some(colors_table) = parsed.get("colors").and_then(|v| v.as_table()) {
+                for (key, value) in colors_table {
+                    if let Some(color_str) = value.as_str() {
+                        colors_for_preprocessing.insert(key.clone(), color_str.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // Set colors in engine for preprocessing
+    engine.set_colors(colors_for_preprocessing);
+
     // Load templates from theme, config, or defaults
     let theme_or_config = theme_str.as_ref().or(config_str.as_ref());
 

@@ -19,7 +19,7 @@ impl TemplatePreprocessor {
     }
 
     /// Process style tags like (bold), (dim), (fg #ff0000), etc.
-    fn process_styles(template: &str) -> Result<String> {
+    fn process_styles(&self, template: &str) -> Result<String> {
         let mut output = String::new();
         let mut chars: Vec<char> = template.chars().collect();
         let mut i = 0;
@@ -63,7 +63,7 @@ impl TemplatePreprocessor {
                         }
                     } else {
                         // Handle opening tag
-                        output.push_str(&Self::get_opening_code(&tag)?);
+                        output.push_str(&self.get_opening_code(&tag)?);
 
                         // Symbols don't need closing tags, so don't push to stack
                         if tag.name != "sym" {
@@ -158,7 +158,7 @@ impl TemplatePreprocessor {
     }
 
     /// Get the opening ANSI code for a style
-    fn get_opening_code(tag: &StyleTag) -> Result<String> {
+    fn get_opening_code(&self, tag: &StyleTag) -> Result<String> {
         match tag.name.as_str() {
             "bold" | "b" => Ok("\x1b[1m".to_string()),
             "dim" | "d" => Ok("\x1b[2m".to_string()),
@@ -166,7 +166,7 @@ impl TemplatePreprocessor {
             "underline" | "u "=> Ok("\x1b[4m".to_string()),
             "fg" => {
                 if let Some(ref args) = tag.args {
-                    let color = Self::resolve_color(args)?;
+                    let color = self.resolve_color(args)?;
                     Ok(format!("\x1b[38;2;{};{};{}m", color.0, color.1, color.2))
                 } else {
                     bail!("fg tag requires color argument")
@@ -174,7 +174,7 @@ impl TemplatePreprocessor {
             },
             "bg" => {
                 if let Some(ref args) = tag.args {
-                    let color = Self::resolve_color(args)?;
+                    let color = self.resolve_color(args)?;
                     Ok(format!("\x1b[48;2;{};{};{}m", color.0, color.1, color.2))
                 } else {
                     bail!("bg tag requires color argument")
@@ -205,10 +205,10 @@ impl TemplatePreprocessor {
         }
     }
 
-    /// Resolve a color from a string (hex code or variable reference)
+    /// Resolve a color from a string (hex code or named color reference)
     /// For hex: returns (r, g, b) tuple
-    /// For variable: converts to Handlebars {{color_var}} placeholder
-    fn resolve_color(color_str: &str) -> Result<(u8, u8, u8)> {
+    /// For named color: looks up in the colors HashMap and resolves to RGB
+    fn resolve_color(&self, color_str: &str) -> Result<(u8, u8, u8)> {
         let trimmed = color_str.trim();
 
         // Check if it's a hex color (#ffffff)
@@ -228,10 +228,14 @@ impl TemplatePreprocessor {
             }
         }
 
-        // If not a hex color, it's a variable reference
-        // We need to look this up in context at runtime
-        // For now, return a placeholder error - we'll handle this in a future iteration
-        bail!("Variable color references not yet supported: {}. Use hex colors like #ff0000", trimmed)
+        // If not a hex color, try to look it up as a named color
+        if let Some(hex_value) = self.colors.get(trimmed) {
+            // Recursively resolve the hex value
+            return self.resolve_color(hex_value);
+        }
+
+        // Color not found
+        bail!("Unknown color name '{}'. Define it in the [colors] section of your theme or use a hex color like #ff0000", trimmed)
     }
 
     /// Resolve a powerline symbol from a standardized name
@@ -297,6 +301,7 @@ impl TemplatePreprocessor {
             "folder_open" => "\u{f07b}",                                   //
 
             // Extras
+            "timer" => "\u{f0109}",                                       //
             "heart" => "\u{f004}",                                        //
             "star" => "\u{f005}",                                         //
             "check" => "\u{f00c}",                                        //
@@ -362,8 +367,10 @@ mod tests {
 
     #[test]
     fn test_bold_tag() {
+        let colors = HashMap::new();
+        let preprocessor = TemplatePreprocessor::new(colors);
         let input = "(bold)Hello(/bold)";
-        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        let result = preprocessor.preprocess(input).unwrap();
         assert!(result.contains("\x1b[1m"));
         assert!(result.contains("\x1b[22m"));
         assert!(result.contains("Hello"));
