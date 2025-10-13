@@ -44,6 +44,10 @@ struct Cli {
     /// Show transient prompt
     #[arg(long)]
     transient: bool,
+
+    /// Suppress error messages (useful for transient prompts to avoid duplication)
+    #[arg(long)]
+    quiet: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -163,6 +167,7 @@ typeset -g ZUSH_LAST_EXIT_CODE=0
 typeset -g ZUSH_CMD_START_TIME=0
 typeset -g ZUSH_CMD_DURATION=0
 typeset -g ZUSH_PROMPT_RENDERED=0
+typeset -g ZUSH_PROMPT_LINES=2  # Number of lines in the current prompt (dynamically calculated)
 
 # Preexec hook - called before command execution (only when a command is entered)
 # Arguments: $1 = command line, $2 = command string, $3 = expanded command
@@ -174,10 +179,6 @@ zush_preexec() {
 
     # Capture the command that's about to be executed
     local cmd="$1"
-
-    # Rewrite the current prompt to transient version before command executes
-    # Count how many lines the prompt takes (for split theme it's 2 lines)
-    local prompt_lines=2
 
     # Build minimal context for transient prompt
     local theme_args=""
@@ -193,10 +194,15 @@ EOF
     )
 
     # Render transient prompt (without Zsh escaping for raw terminal output)
-    local transient_prompt=$($ZUSH_PROMPT_BIN --template transient --format raw $theme_args prompt \
+    # Use --quiet to suppress error messages (already shown in main prompt)
+    local transient_prompt=$($ZUSH_PROMPT_BIN --template transient --format raw --quiet $theme_args prompt \
         --context "$context_json" \
         --exit-code $ZUSH_LAST_EXIT_CODE \
         --execution-time $ZUSH_CMD_DURATION)
+
+    # TODO: Make this dynamic based on theme
+    # For now, hardcoded to 3 for splug theme
+    local prompt_lines=3
 
     # Move cursor up to beginning of prompt, clear lines, and print transient version + command
     # \e[<n>A moves cursor up n lines
@@ -240,13 +246,15 @@ EOF
         )
 
         # Render transient prompt (empty command line)
-        local transient_prompt=$($ZUSH_PROMPT_BIN --template transient --format raw $theme_args prompt \
+        # Use --quiet to suppress error messages (already shown in main prompt)
+        local transient_prompt=$($ZUSH_PROMPT_BIN --template transient --format raw --quiet $theme_args prompt \
             --context "$context_json" \
             --exit-code $ZUSH_LAST_EXIT_CODE \
             --execution-time 0)
 
         # Move cursor up to beginning of prompt, clear lines, and print transient version
-        local prompt_lines=2
+        # TODO: Make this dynamic based on theme
+        local prompt_lines=3
         printf '\e[%dA\e[0G\e[0J%s\n' "$prompt_lines" "$transient_prompt"
     fi
 
@@ -295,28 +303,6 @@ EOF
         --execution-time $ZUSH_CMD_DURATION
 }
 
-# Right prompt
-zush_rprompt() {
-    local context_json=$(cat <<EOF
-{
-    "pwd": "$PWD",
-    "time": "$(date +%H:%M:%S)"
-}
-EOF
-    )
-
-    # Use ZUSH_CURRENT_THEME if set
-    local theme_args=""
-    if [[ -n "$ZUSH_CURRENT_THEME" ]]; then
-        theme_args="--theme $ZUSH_CURRENT_THEME"
-    fi
-
-    $ZUSH_PROMPT_BIN --template "right" --format zsh $theme_args prompt \
-        --context "$context_json" \
-        --exit-code $ZUSH_LAST_EXIT_CODE \
-        --execution-time $ZUSH_CMD_DURATION
-}
-
 # Setup hooks
 add-zsh-hook preexec zush_preexec
 add-zsh-hook precmd zush_precmd
@@ -330,17 +316,8 @@ TRAPWINCH() {
 setopt PROMPT_SUBST
 PROMPT='$(zush_prompt)'
 
-# Only set RPROMPT for themes that use it (not split, which handles right content inline)
-case "$ZUSH_CURRENT_THEME" in
-    split)
-        # Split theme handles right content inline, don't use RPROMPT
-        RPROMPT=''
-        ;;
-    *)
-        # Other themes use RPROMPT
-        RPROMPT='$(zush_rprompt)'
-        ;;
-esac
+# Never use RPROMPT - all right-aligned content is handled inline on the first line
+RPROMPT=''
 "#;
 
     println!("{}", script);
@@ -515,8 +492,12 @@ fn render_prompt(
     let theme_or_config = theme_str.as_ref().or(config_str.as_ref());
 
     if let Some(toml_str) = theme_or_config {
-        if engine.load_templates_from_config(toml_str).is_err() {
-            // If loading fails, register defaults
+        if let Err(e) = engine.load_templates_from_config(toml_str) {
+            // If loading fails, print stylized error (unless quiet mode) and register defaults
+            if !cli.quiet {
+                eprintln!("\n\x1b[38;2;243;139;168m\x1b[1m✖ Template Loading Error\x1b[22m\x1b[39m");
+                eprintln!("\x1b[38;2;249;226;175m{}\x1b[39m\n", e);
+            }
             register_default_templates(&mut engine)?;
         }
     } else {
@@ -783,37 +764,75 @@ fn render_prompt(
     // Set context in engine
     engine.set_context(context.clone());
 
-    // Pre-render left and right templates if they exist, and build complete first line in Rust
-    // This bypasses the need for a line helper in templates (which had registration issues)
-    let left_result = engine.render("left");
-    let right_result = engine.render("right");
+    // Only build first_line for the main template (not for transient or other templates)
+    if cli.template == "main" {
+        // Pre-render left and right templates if they exist, and build complete first line in Rust
+        // This bypasses the need for a line helper in templates (which had registration issues)
+        let left_result = engine.render("left");
+        let right_result = engine.render("right");
 
-    if let (Ok(left_output), Ok(right_output)) = (left_result, right_result) {
-        // Use the terminal width we detected above
+        // Build first_line only if both left and right templates render successfully
+        // If right template is empty or fails, just use left content
+        match (left_result, right_result) {
+            (Ok(left_output), Ok(right_output)) if !right_output.trim().is_empty() => {
+                // Both templates exist and right is not empty - build complete line with spacing
+                let left_visible = TerminalBuffer::visible_width(&left_output);
+                let right_visible = TerminalBuffer::visible_width(&right_output);
+                let total_content = left_visible + right_visible;
 
-        // Calculate visible widths (stripping ANSI codes)
-        let left_visible = TerminalBuffer::visible_width(&left_output);
-        let right_visible = TerminalBuffer::visible_width(&right_output);
-        let total_content = left_visible + right_visible;
+                let first_line = if total_content >= terminal_width {
+                    // No space for padding, just concatenate
+                    format!("{}{}", left_output, right_output)
+                } else {
+                    // Add spacing between left and right
+                    let spacing = terminal_width - total_content;
+                    format!("{}{:width$}{}", left_output, "", right_output, width = spacing)
+                };
 
-        // Build the complete first line with proper spacing
-        let first_line = if total_content >= terminal_width {
-            // No space for padding, just concatenate
-            format!("{}{}", left_output, right_output)
-        } else {
-            // Add spacing between left and right
-            let spacing = terminal_width - total_content;
-            format!("{}{:width$}{}", left_output, "", right_output, width = spacing)
-        };
+                context.insert("first_line".to_string(), json!(first_line));
+            }
+            (Ok(left_output), _) => {
+                // Only left template exists or right is empty - use left only
+                context.insert("first_line".to_string(), json!(left_output));
+            }
+            _ => {
+                // Neither template rendered successfully - leave first_line empty
+                context.insert("first_line".to_string(), json!(""));
+            }
+        }
 
-        context.insert("first_line".to_string(), json!(first_line));
+        // Update context with rendered templates
+        engine.set_context(context);
+    } else {
+        // For non-main templates (like transient), explicitly set first_line to empty
+        // to ensure it doesn't render anything if the template accidentally references it
+        context.insert("first_line".to_string(), json!(""));
+        engine.set_context(context);
     }
 
-    // Update context with rendered templates
-    engine.set_context(context);
+    // Render template with error handling
+    let output = match engine.render(&cli.template) {
+        Ok(result) => result,
+        Err(e) => {
+            // Display rendering error above the prompt
+            eprintln!("\n\x1b[38;2;243;139;168m\x1b[1m✖ Template Rendering Error\x1b[22m\x1b[39m");
+            eprintln!("\x1b[38;2;249;226;175m{}\x1b[39m\n", e);
 
-    // Render template
-    let output = engine.render(&cli.template)?;
+            // Fall back to a minimal safe prompt with user@host and directory
+            // Get these from env variables since context was already moved
+            let user = std::env::var("USER").unwrap_or_else(|_| "user".to_string());
+            let pwd_short = if let Ok(pwd) = std::env::var("PWD") {
+                if let Ok(home) = std::env::var("HOME") {
+                    pwd.replace(&home, "~")
+                } else {
+                    pwd
+                }
+            } else {
+                "~".to_string()
+            };
+            format!("\x1b[38;2;137;180;250m{}\x1b[39m in \x1b[38;2;189;147;249m{}\x1b[39m\n\x1b[38;2;243;139;168m❯\x1b[39m ", user, pwd_short)
+        }
+    };
 
     // Format output based on requested format
     match cli.format.as_str() {
@@ -840,16 +859,19 @@ fn render_prompt(
 }
 
 fn register_default_templates(engine: &mut TemplateEngine) -> Result<()> {
-    // Main prompt
-    engine.register_template("main", r#"{{color colors.green symbols.success}} {{bold (color colors.blue user)}} {{color colors.white "in"}} {{color colors.magenta pwd}}
-{{color colors.blue symbols.prompt_arrow}} "#)?;
+    // Main prompt - two line format with status, user, directory on first line and arrow on second
+    engine.register_template("main", r#"(fg #9ece6a)✓(/fg) (bold)(fg #7aa2f7){{user}}(/fg)(/bold) (fg #c0caf5)in(/fg) (fg #bb9af7){{pwd_short}}(/fg)
+(fg #7aa2f7)❯(/fg) "#)?;
+
+    // Left template (empty for default)
+    engine.register_template("left", "")?;
+
+    // Right template (empty for default)
+    engine.register_template("right", "")?;
 
     // Transient prompt
-    engine.register_template("transient", r#"{{dim time}}
-{{color colors.blue symbols.prompt_arrow}} "#)?;
-
-    // Right prompt
-    engine.register_template("right", r#"{{#if execution_time}}{{color colors.yellow execution_time}}s {{/if}}{{dim time}}"#)?;
+    engine.register_template("transient", r#"(dim){{time}}(/dim)
+(fg #7aa2f7)❯(/fg) "#)?;
 
     Ok(())
 }

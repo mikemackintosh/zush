@@ -1,13 +1,21 @@
 use anyhow::{Result, bail};
+use std::collections::HashMap;
 
 /// Preprocessor for simplified template syntax
 /// Converts simplified syntax like (bold)text(/bold) to ANSI escape codes
-pub struct TemplatePreprocessor;
+pub struct TemplatePreprocessor {
+    colors: HashMap<String, String>,
+}
 
 impl TemplatePreprocessor {
+    /// Create a new preprocessor with a color map
+    pub fn new(colors: HashMap<String, String>) -> Self {
+        Self { colors }
+    }
+
     /// Preprocess a template string, converting simplified syntax to Handlebars
-    pub fn preprocess(template: &str) -> Result<String> {
-        Self::process_styles(template)
+    pub fn preprocess(&self, template: &str) -> Result<String> {
+        self.process_styles(template)
     }
 
     /// Process style tags like (bold), (dim), (fg #ff0000), etc.
@@ -18,25 +26,49 @@ impl TemplatePreprocessor {
         let mut style_stack: Vec<StyleTag> = Vec::new();
 
         while i < chars.len() {
+            // Check for handlebars block start {{ - pass through without processing
+            if i + 1 < chars.len() && chars[i] == '{' && chars[i + 1] == '{' {
+                // Find the end of the handlebars block
+                output.push(chars[i]);
+                i += 1;
+                while i < chars.len() {
+                    output.push(chars[i]);
+                    if i + 1 < chars.len() && chars[i] == '}' && chars[i + 1] == '}' {
+                        i += 1;
+                        output.push(chars[i]);
+                        i += 1;
+                        break;
+                    }
+                    i += 1;
+                }
+                continue;
+            }
+
             if chars[i] == '(' {
                 // Try to parse a style tag
                 if let Some((tag, end_pos)) = Self::parse_style_tag(&chars, i)? {
                     if tag.is_closing {
                         // Handle closing tag - find matching opening tag
                         if let Some(idx) = style_stack.iter().rposition(|t| t.name == tag.name) {
-                            let opening_tag = style_stack.remove(idx);
+                            let _opening_tag = style_stack.remove(idx);
 
                             // Collect content between opening and this closing tag
                             // For now, we'll use ANSI codes directly since Handlebars
                             // doesn't support opening/closing independently
                             output.push_str(&Self::get_closing_code(&tag.name)?);
                         } else {
-                            bail!("Closing tag (/{}) has no matching opening tag", tag.name);
+                            // Don't error on unmatched closing tags - they may be in handlebars branches
+                            // Just output the closing code and continue
+                            output.push_str(&Self::get_closing_code(&tag.name)?);
                         }
                     } else {
                         // Handle opening tag
                         output.push_str(&Self::get_opening_code(&tag)?);
-                        style_stack.push(tag);
+
+                        // Symbols don't need closing tags, so don't push to stack
+                        if tag.name != "sym" {
+                            style_stack.push(tag);
+                        }
                     }
                     i = end_pos;
                 } else {
@@ -51,10 +83,11 @@ impl TemplatePreprocessor {
             }
         }
 
-        // Check for unclosed tags
+        // Check for unclosed tags - but be lenient for tags that might be closed in handlebars branches
+        // We'll warn about unclosed tags at the end of the template
         if !style_stack.is_empty() {
-            bail!("Unclosed style tags: {:?}",
-                  style_stack.iter().map(|t| &t.name).collect::<Vec<_>>());
+            let unclosed: Vec<String> = style_stack.iter().map(|t| t.name.clone()).collect();
+            bail!("Unclosed style tags at end of template: {:?}. Each opening tag like (bold) must have a matching closing tag like (/bold).", unclosed);
         }
 
         Ok(output)
@@ -88,8 +121,8 @@ impl TemplatePreprocessor {
             return Ok(None);
         }
 
-        // Only accept valid style names
-        let valid_styles = ["bold", "dim", "italic", "underline", "fg", "bg"];
+        // Only accept valid style names and symbol tag
+        let valid_styles = ["bold", "b", "em", "i", "d", "u", "dim", "italic", "underline", "fg", "bg", "sym"];
         if !valid_styles.contains(&name.as_str()) {
             return Ok(None);
         }
@@ -127,10 +160,10 @@ impl TemplatePreprocessor {
     /// Get the opening ANSI code for a style
     fn get_opening_code(tag: &StyleTag) -> Result<String> {
         match tag.name.as_str() {
-            "bold" => Ok("\x1b[1m".to_string()),
-            "dim" => Ok("\x1b[2m".to_string()),
-            "italic" => Ok("\x1b[3m".to_string()),
-            "underline" => Ok("\x1b[4m".to_string()),
+            "bold" | "b" => Ok("\x1b[1m".to_string()),
+            "dim" | "d" => Ok("\x1b[2m".to_string()),
+            "italic" | "em" | "i" => Ok("\x1b[3m".to_string()),
+            "underline" | "u "=> Ok("\x1b[4m".to_string()),
             "fg" => {
                 if let Some(ref args) = tag.args {
                     let color = Self::resolve_color(args)?;
@@ -147,6 +180,13 @@ impl TemplatePreprocessor {
                     bail!("bg tag requires color argument")
                 }
             },
+            "sym" => {
+                if let Some(ref args) = tag.args {
+                    Self::resolve_symbol(args)
+                } else {
+                    bail!("sym tag requires symbol name argument")
+                }
+            },
             _ => bail!("Unknown style tag: {}", tag.name),
         }
     }
@@ -154,12 +194,13 @@ impl TemplatePreprocessor {
     /// Get the closing ANSI code for a style
     fn get_closing_code(name: &str) -> Result<String> {
         match name {
-            "bold" => Ok("\x1b[22m".to_string()),      // Reset bold/dim
-            "dim" => Ok("\x1b[22m".to_string()),       // Reset bold/dim
-            "italic" => Ok("\x1b[23m".to_string()),    // Reset italic
-            "underline" => Ok("\x1b[24m".to_string()), // Reset underline
+            "bold" | "b" => Ok("\x1b[22m".to_string()),      // Reset bold/dim
+            "dim" | "d" => Ok("\x1b[22m".to_string()),       // Reset bold/dim
+            "italic" | "em" | "i" => Ok("\x1b[23m".to_string()),    // Reset italic
+            "underline" | "u" => Ok("\x1b[24m".to_string()), // Reset underline
             "fg" => Ok("\x1b[39m".to_string()),        // Reset foreground
             "bg" => Ok("\x1b[49m".to_string()),        // Reset background
+            "sym" => Ok("".to_string()),               // Symbols don't need closing
             _ => bail!("Unknown style tag: {}", name),
         }
     }
@@ -192,6 +233,119 @@ impl TemplatePreprocessor {
         // For now, return a placeholder error - we'll handle this in a future iteration
         bail!("Variable color references not yet supported: {}. Use hex colors like #ff0000", trimmed)
     }
+
+    /// Resolve a powerline symbol from a standardized name
+    /// Returns the UTF-8 encoded symbol character
+    fn resolve_symbol(symbol_name: &str) -> Result<String> {
+        let symbol = match symbol_name.trim() {
+            // Powerline triangles (solid arrows)
+            "triangle_right" | "tri_right" | "arrow_right" => "\u{e0b0}",  //
+            "triangle_left" | "tri_left" | "arrow_left" => "\u{e0b2}",     //
+
+            "inverted_triangle_right" | "inv_tri_right" | "inv_arrow_right" => "\u{e0d7}", //
+            "inverted_triangle_left" | "inv_tri_left" | "inv_arrow_left" => "\u{e0d6}",  //
+            
+            // Powerline pills/rounded (flame-like)
+            "pill_right" | "round_right" => "\u{e0b4}",    //
+            "pill_left" | "round_left" => "\u{e0b6}",       //
+
+            // Flame
+            "flame_left" => "\u{e0c0}",                                      //
+            "flame_right" => "\u{e0c2}",                                     //
+
+            // Trapezoid shapes
+            "trapezoid_right" => "\u{e0d2}",                                //
+            "trapezoid_left" => "\u{e0d4}",                                 //
+
+
+            // Powerline angles (thin arrows)
+            "angle_right" | "thin_right" => "\u{e0b1}",                    //
+            "angle_left" | "thin_left" => "\u{e0b3}",                      //
+
+            // Powerline thin pills/rounded
+            "pill_right_thin" | "round_right_thin" => "\u{e0b5}",          //
+            "pill_left_thin" | "round_left_thin" => "\u{e0b7}",            //
+
+            // Powerline circles (semi-circles)
+            "circle_right" | "semicircle_right" => "\u{e0b8}",             //
+            "circle_left" | "semicircle_left" => "\u{e0ba}",               //
+
+            // Powerline slants/diagonal
+            "slant_right" | "diagonal_right" => "\u{e0bc}",                //
+            "slant_left" | "diagonal_left" => "\u{e0be}",                  //
+
+            // Misc shapes
+            "ice_cream" => "\u{f0efd}",                                    // Ice Cream (fun)
+            "ice_cream_thick" => "\u{ef888}",                              // Custom glyph
+            "ice_cream_outline" => "\u{f082a}",                            // Ice Cream Outline (fun)
+
+            // Slash
+            "backslash" | "backslash" => "\u{e216}",                       //
+
+            // Additional powerline shapes
+            "lower_triangle_right" => "\u{e0b8}",                          //
+            "lower_triangle_left" => "\u{e0ba}",                           //
+            "upper_triangle_right" => "\u{e0bc}",                          //
+            "upper_triangle_left" => "\u{e0be}",                           //
+
+            // Common nerd font icons
+            "git_branch" | "branch" => "\u{e0a0}",                         //
+            "lock" => "\u{e0a2}",                                          //
+            "cog" | "gear" => "\u{e615}",                                  //
+            "home" => "\u{f015}",                                          //
+            "folder" => "\u{f07c}",                                        //
+            "folder_open" => "\u{f07b}",                                   //
+
+            // Extras
+            "heart" => "\u{f004}",                                        //
+            "star" => "\u{f005}",                                         //
+            "check" => "\u{f00c}",                                        //
+            "cross" | "x" => "\u{f00d}",                                  //
+            "info" => "\u{f129}",                                         //
+            "warning" => "\u{f071}",                                      //
+            "question" => "\u{f128}",                                     //
+            "clock" => "\u{f017}",                                       //
+            "calendar" => "\u{f133}",                                     //
+            "mail" | "envelope" => "\u{f0e0}",                               //
+            "phone" => "\u{f095}",                                        //
+            "music" => "\u{f001}",                                        //
+            "camera" => "\u{f030}",                                       //
+            "search" | "magnifying_glass" => "\u{f002}",                     //
+            "trash" | "trash_can" => "\u{f1f8}",                             //
+            "battery_full" => "\u{f240}",                                 //
+            "battery_half" => "\u{f242}",                                 //
+            "battery_low" => "\u{f243}",                                  //
+            "wifi" => "\u{f1eb}",                                        //
+            "plug" => "\u{f1e6}",                                        //
+            "cloud" => "\u{f0c2}",                                       //
+            "sun" => "\u{f185}",                                         //
+            "moon" => "\u{f186}",                                        //
+            "fire" => "\u{f06d}",                                        //
+            "bug" => "\u{f188}",                                         //
+            "code" => "\u{f121}",                                        //
+            "terminal" => "\u{f120}",                                    //
+            "keyboard" => "\u{f11c}",                                    //
+            "laptop" => "\u{f109}",                                      //
+            "desktop" => "\u{f108}",                                     //
+            "server" => "\u{f233}",                                      //
+            "computer" => "\u{f4b3}",                                    //
+            "rocket" => "\u{f135}",                                      //
+            "shield" => "\u{f3ed}",                                      //
+            "terminal_power" => "\u{f489}",                              //
+            "terminal_fire" => "\u{f489}",                               //
+            "terminal_bolt" => "\u{f489}",                               //
+            "terminal_flame" => "\u{f489}",                              // "terminal_lightning" => "\u{f489}",                          //
+            "lightning" => "\u{f0e7}",                                   //
+            "zap" => "\u{f0e7}",                                        // "flash" => "\u{f0e7}",                                     //
+            "insect" => "\u{f188}",                                     //
+            "leaf" => "\u{f06c}",                                       //
+            "paw" => "\u{f1b0}",                                       //
+
+            _ => bail!("Unknown symbol name: {}. See documentation for available symbols.", symbol_name),
+        };
+
+        Ok(symbol.to_string())
+    }
 }
 
 /// Represents a style tag like (bold) or (fg #ff0000)
@@ -215,6 +369,16 @@ mod tests {
         assert!(result.contains("Hello"));
         println!("Bold result: {:?}", result);
     }
+
+    #[test]
+    fn test_bold_short_tag() {
+        let input = "(b)Hello(/b)";
+        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        assert!(result.contains("\x1b[1m"));
+        assert!(result.contains("\x1b[22m"));
+        assert!(result.contains("Hello"));
+        println!("Bold result: {:?}", result);
+    }    
 
     #[test]
     fn test_fg_hex_color() {
@@ -265,5 +429,75 @@ mod tests {
         assert!(result.contains("\x1b[38;2;255;255;255m"));
         assert!(result.contains("\x1b[48;2;0;0;0m"));
         println!("Combined result: {:?}", result);
+    }
+
+    #[test]
+    fn test_powerline_symbols() {
+        // Test triangle right (arrow)
+        let input = "(sym triangle_right)";
+        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        assert_eq!(result, "\u{e0b0}");
+        println!("Triangle right: {:?}", result);
+
+        // Test pill left
+        let input = "(sym pill_left)";
+        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        assert_eq!(result, "\u{e0b6}");
+        println!("Pill left: {:?}", result);
+
+        // Test git branch
+        let input = "(sym git_branch)";
+        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        assert_eq!(result, "\u{e0a0}");
+        println!("Git branch: {:?}", result);
+    }
+
+    #[test]
+    fn test_symbols_with_styles() {
+        // Symbols should work inline with other styles
+        let input = "(fg #ff0000)(sym triangle_right)(/fg) Text";
+        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        assert!(result.contains("\x1b[38;2;255;0;0m"));
+        assert!(result.contains("\u{e0b0}"));
+        assert!(result.contains("\x1b[39m"));
+        println!("Symbols with styles: {:?}", result);
+    }
+
+    #[test]
+    fn test_symbol_aliases() {
+        // Test that aliases work
+        let input1 = "(sym triangle_right)";
+        let input2 = "(sym tri_right)";
+        let input3 = "(sym arrow_right)";
+
+        let result1 = TemplatePreprocessor::preprocess(input1).unwrap();
+        let result2 = TemplatePreprocessor::preprocess(input2).unwrap();
+        let result3 = TemplatePreprocessor::preprocess(input3).unwrap();
+
+        assert_eq!(result1, result2);
+        assert_eq!(result2, result3);
+        println!("All aliases produce same result: {:?}", result1);
+    }
+}
+
+#[cfg(test)]
+mod test_adjacent_tags {
+    use super::*;
+
+    #[test]
+    fn test_adjacent_b_and_bg() {
+        let input = "(b)(bg #ff0000)test";
+        let result = TemplatePreprocessor::preprocess(input);
+        println!("Input: {}", input);
+        match &result {
+            Ok(r) => println!("Success: {:?}", r),
+            Err(e) => println!("Error: {}", e),
+        }
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        // Should have bold code AND background code
+        assert!(output.contains("\x1b[1m"), "Should contain bold code");
+        assert!(output.contains("\x1b[48;2;255;0;0m"), "Should contain bg code");
+        println!("Test passed!");
     }
 }

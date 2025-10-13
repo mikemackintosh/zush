@@ -6,6 +6,7 @@ A blazingly fast, highly customizable Zsh prompt written in Rust with perfect bu
 
 - 🎨 **24-bit True Color Support**: Full RGB color with hex codes (#ff9e64)
 - 📐 **Split Layout**: Left and right aligned content with automatic spacing
+- 🔧 **Simplified Template Syntax**: Easy-to-read `(bold)text(/bold)` style syntax with standardized powerline symbols
 - 🔧 **Handlebars Templates**: Powerful, flexible templating engine
 - 🚀 **Blazing Fast**: Written in Rust for maximum performance (~10ms render time)
 - 🔄 **Transient Prompts**: Simplified prompts for cleaner scrollback
@@ -185,7 +186,79 @@ Create your own theme in `~/.config/zush/themes/mytheme.toml`
 
 ### Template Syntax
 
-Templates use Handlebars syntax with custom helpers:
+Templates support both traditional Handlebars syntax and a new simplified syntax for easier readability.
+
+#### Simplified Syntax (Recommended)
+
+The simplified syntax uses parentheses-based tags that are more concise and readable:
+
+```toml
+# Styles
+(bold)Bold text(/bold)                 # Bold text
+(dim)Dimmed text(/dim)                 # Dimmed text
+(italic)Italic text(/italic)           # Italic text
+(underline)Underlined text(/underline) # Underlined text
+
+# Colors (hex codes required)
+(fg #ff0000)Red text(/fg)              # Red foreground
+(bg #000000)Black background(/bg)      # Black background
+
+# Nested styles work naturally
+(bold)(fg #00ff00)Bold green text(/fg)(/bold)
+
+# Powerline symbols (standardized names)
+(sym triangle_right)                   #
+(sym pill_left)                        #
+(sym git_branch)                       #
+(sym circle_right)                     #
+(sym angle_left)                       #
+
+# Symbols don't need closing tags
+(fg #ff0000)(sym triangle_right)(/fg)  # Red powerline separator
+
+# Example: Powerline segment
+(bg #f38ba8)(fg #11111b) user (/fg)(/bg)(fg #f38ba8)(sym triangle_right)(/fg)
+```
+
+**Path Formatting:**
+
+The `format_path` helper provides multiple ways to format directory paths:
+
+```handlebars
+# Different path formatting modes
+{{format_path pwd "full"}}      # Full path: ~/projects/zush/zuper-shell-prompt/zush-prompt-rust
+{{format_path pwd "last"}}      # Last segment only: …/zush-prompt-rust
+{{format_path pwd "first:1"}}   # First char per segment: ~/p/z/z/zush-prompt-rust
+{{format_path pwd "first:3"}}   # First 3 chars per segment: ~/pro/zus/zup/zush-prompt-rust
+{{format_path pwd "depth:2"}}   # Deepest 2 directories: ~/zuper-shell-prompt/zush-prompt-rust
+{{format_path pwd "ellipsis"}}  # Base + ellipsis + current: ~/…/zush-prompt-rust
+```
+
+**Available modes:**
+- `"full"` - Complete path (default)
+- `"last"` - Only the last directory segment with ellipsis prefix
+- `"first:N"` - Abbreviate each segment to first N characters (preserves last segment)
+- `"depth:N"` - Show only the deepest N directories
+- `"ellipsis"` - Show first and last segments with ellipsis in between
+
+**Available Powerline Symbols:**
+
+| Symbol Names | Character | Description |
+|-------------|-----------|-------------|
+| `triangle_right`, `tri_right`, `arrow_right` |  | Solid right arrow |
+| `triangle_left`, `tri_left`, `arrow_left` |  | Solid left arrow |
+| `pill_right`, `flame_right`, `round_right` |  | Right rounded/flame |
+| `pill_left`, `flame_left`, `round_left` |  | Left rounded/flame |
+| `angle_right`, `thin_right` |  | Thin right angle |
+| `angle_left`, `thin_left` |  | Thin left angle |
+| `circle_right`, `semicircle_right` |  | Right semicircle |
+| `circle_left`, `semicircle_left` |  | Left semicircle |
+| `git_branch`, `branch` |  | Git branch icon |
+| `lock` |  | Lock icon |
+| `folder` |  | Folder icon |
+| `home` |  | Home icon |
+
+#### Traditional Handlebars Syntax
 
 ```handlebars
 # Color and styling
@@ -208,6 +281,8 @@ Templates use Handlebars syntax with custom helpers:
 {{div value divisor}}                  # Division
 {{mul value factor}}                   # Multiplication
 ```
+
+**Note:** Both syntaxes can be mixed in the same template. The simplified syntax is preprocessed before Handlebars rendering.
 
 ### Available Template Variables
 

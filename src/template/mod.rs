@@ -34,6 +34,7 @@ impl TemplateEngine {
         handlebars.register_helper("pad_right", Box::new(pad_right_helper));
         handlebars.register_helper("center", Box::new(center_helper));
         handlebars.register_helper("line", Box::new(line_helper));
+        handlebars.register_helper("format_path", Box::new(format_path_helper));
 
         // Disable HTML escaping for terminal output
         handlebars.register_escape_fn(handlebars::no_escape);
@@ -99,7 +100,12 @@ impl TemplateEngine {
 /// Template configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TemplateConfig {
+    #[serde(default)]
     pub templates: HashMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colors: Option<HashMap<String, String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub symbols: Option<HashMap<String, String>>,
 }
 
 // Helper functions for Handlebars
@@ -303,6 +309,80 @@ fn line_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, o
     Ok(())
 }
 
+/// Format path helper: {{format_path path "mode"}}
+/// Modes: "last", "first:N", "depth:N", "ellipsis", "full"
+/// Examples:
+///   {{format_path pwd "last"}} -> …/current-dir
+///   {{format_path pwd "first:1"}} -> ~/p/z/z-p-r
+///   {{format_path pwd "depth:2"}} -> ~/zuper-shell-prompt/zush-prompt-rust
+///   {{format_path pwd "ellipsis"}} -> ~/…/zush-prompt-rust
+fn format_path_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let path = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
+    let mode = h.param(1).and_then(|v| v.value().as_str()).unwrap_or("full");
+
+    let result = match mode {
+        "last" => {
+            // Only last segment with ellipsis
+            if let Some(last) = path.split('/').last() {
+                if path.contains('/') {
+                    format!("…/{}", last)
+                } else {
+                    last.to_string()
+                }
+            } else {
+                path.to_string()
+            }
+        },
+        mode if mode.starts_with("first:") => {
+            // First N characters of each segment
+            let n = mode.strip_prefix("first:")
+                .and_then(|s| s.parse::<usize>().ok())
+                .unwrap_or(1);
+
+            let segments: Vec<&str> = path.split('/').collect();
+            let formatted: Vec<String> = segments.iter().enumerate().map(|(i, seg)| {
+                // Don't abbreviate ~ or the last segment
+                if seg == &"~" || i == segments.len() - 1 || seg.is_empty() {
+                    seg.to_string()
+                } else {
+                    seg.chars().take(n).collect()
+                }
+            }).collect();
+            formatted.join("/")
+        },
+        mode if mode.starts_with("depth:") => {
+            // Only deepest N directories
+            let n = mode.strip_prefix("depth:")
+                .and_then(|s| s.parse::<usize>().ok())
+                .unwrap_or(2);
+
+            let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+            if segments.len() <= n {
+                path.to_string()
+            } else {
+                let start_idx = segments.len() - n;
+                let prefix = if path.starts_with('~') { "~/" } else { "" };
+                format!("{}{}", prefix, segments[start_idx..].join("/"))
+            }
+        },
+        "ellipsis" => {
+            // Base + ellipsis + current (show first and last, hide middle)
+            let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+            if segments.len() <= 2 {
+                path.to_string()
+            } else {
+                let first = segments[0];
+                let last = segments[segments.len() - 1];
+                format!("{}/…/{}", first, last)
+            }
+        },
+        _ => path.to_string(), // "full" or unknown mode
+    };
+
+    write!(out, "{}", result)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -378,5 +458,56 @@ mod tests {
         assert!(result.contains("Green Bold"));
         assert!(result.contains("Still Bold"));
         println!("Nested test: {:?}", result);
+    }
+
+    #[test]
+    fn test_format_path() {
+        let mut engine = TemplateEngine::new().unwrap();
+        let test_path = "~/projects/zush/zuper-shell-prompt/zush-prompt-rust";
+
+        // Test "last" mode
+        engine.register_template("path_last", r##"{{format_path pwd "last"}}"##).unwrap();
+        engine.set_value("pwd", json!(test_path));
+        let result = engine.render("path_last").unwrap();
+        assert_eq!(result, "…/zush-prompt-rust");
+        println!("Path last: {}", result);
+
+        // Test "first:1" mode
+        engine.register_template("path_first1", r##"{{format_path pwd "first:1"}}"##).unwrap();
+        let result = engine.render("path_first1").unwrap();
+        assert_eq!(result, "~/p/z/z/zush-prompt-rust");
+        println!("Path first:1: {}", result);
+
+        // Test "first:3" mode
+        engine.register_template("path_first3", r##"{{format_path pwd "first:3"}}"##).unwrap();
+        let result = engine.render("path_first3").unwrap();
+        assert_eq!(result, "~/pro/zus/zup/zush-prompt-rust");
+        println!("Path first:3: {}", result);
+
+        // Test "depth:2" mode
+        engine.register_template("path_depth2", r##"{{format_path pwd "depth:2"}}"##).unwrap();
+        let result = engine.render("path_depth2").unwrap();
+        assert_eq!(result, "~/zuper-shell-prompt/zush-prompt-rust");
+        println!("Path depth:2: {}", result);
+
+        // Test "ellipsis" mode
+        engine.register_template("path_ellipsis", r##"{{format_path pwd "ellipsis"}}"##).unwrap();
+        let result = engine.render("path_ellipsis").unwrap();
+        assert_eq!(result, "~/…/zush-prompt-rust");
+        println!("Path ellipsis: {}", result);
+
+        // Test "full" mode (default)
+        engine.register_template("path_full", r##"{{format_path pwd "full"}}"##).unwrap();
+        let result = engine.render("path_full").unwrap();
+        assert_eq!(result, test_path);
+        println!("Path full: {}", result);
+
+        // Test short path
+        let short_path = "~/documents";
+        engine.set_value("pwd", json!(short_path));
+        engine.register_template("path_short_last", r##"{{format_path pwd "last"}}"##).unwrap();
+        let result = engine.render("path_short_last").unwrap();
+        assert_eq!(result, "…/documents");
+        println!("Short path last: {}", result);
     }
 }
