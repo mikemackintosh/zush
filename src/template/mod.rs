@@ -422,11 +422,12 @@ fn format_path_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderCon
 
             let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
             if segments.len() <= n {
+                // Showing all segments, keep original path
                 path.to_string()
             } else {
+                // Truncating: use ellipsis to show we're hiding parent directories
                 let start_idx = segments.len() - n;
-                let prefix = if path.starts_with('~') { "~/" } else { "" };
-                format!("{}{}", prefix, segments[start_idx..].join("/"))
+                format!("…/{}", segments[start_idx..].join("/"))
             }
         },
         "ellipsis" => {

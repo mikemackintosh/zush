@@ -540,12 +540,20 @@ fn render_prompt(
                             // Normalize multiline content: strip leading/trailing whitespace from each line
                             // and join into a single line. This allows readable multiline TOML without
                             // inserting actual newlines into the template.
-                            let normalized_content = content
-                                .lines()
-                                .map(|line| line.trim())
-                                .filter(|line| !line.is_empty())
-                                .collect::<Vec<_>>()
-                                .join("");
+                            // BUT: preserve single-line content as-is to keep intentional trailing spaces.
+                            let lines: Vec<&str> = content.lines().collect();
+                            let normalized_content = if lines.len() == 1 {
+                                // Single line - keep as-is (preserves trailing spaces for background fill)
+                                content.to_string()
+                            } else {
+                                // Multiple lines - trim and join
+                                lines
+                                    .iter()
+                                    .map(|line| line.trim())
+                                    .filter(|line| !line.is_empty())
+                                    .collect::<Vec<_>>()
+                                    .join("")
+                            };
 
                             let mut segment = template::SegmentDef::new(
                                 segment_name.clone(),
