@@ -1,0 +1,28 @@
+# Ocean Theme
+
+name = "ocean"
+description = "Cool ocean waves with aqua and blue pastels"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+ocean_aqua = "#b8f2e6"
+ocean_teal = "#88d4c0"
+ocean_cyan = "#72c5db"
+ocean_blue = "#7ab8f5"
+ocean_indigo = "#9baff5"
+ocean_purple = "#b8aff5"
+ocean_foam = "#e3f9f6"
+text_dark = "#2d4654"
+
+[symbols]
+pill_left = "\ue0b6"
+sep = "\ue0b0"
+wave = ""
+
+[templates]
+main = """(fg ocean_aqua)@pill_left(/fg)(bg ocean_aqua)(fg text_dark) @wave {{user}} (/fg)(/bg)(fg ocean_aqua)(bg ocean_teal)@sep(/fg)(/bg)(bg ocean_teal)(fg text_dark)  {{pwd_short}} (/fg)(/bg){{#if git_branch}}(fg ocean_teal)(bg ocean_cyan)@sep(/fg)(/bg)(bg ocean_cyan)(fg text_dark)  {{git_branch}}{{#if (gt git_modified 0)}} (fg ocean_foam)~{{git_modified}}(/fg){{/if}}{{#if (gt git_staged 0)}} (fg ocean_aqua)●{{git_staged}}(/fg){{/if}} (/fg)(/bg)(fg ocean_cyan)(bg ocean_blue)@sep(/fg)(/bg){{else}}(fg ocean_teal)(bg ocean_blue)@sep(/fg)(/bg){{/if}}(bg ocean_blue)(fg text_dark)  {{time}} (/fg)(/bg)(fg ocean_blue)@sep(/fg)
+{{#if (eq exit_code 0)}}(fg ocean_teal)❯(/fg) {{else}}(fg ocean_indigo)❯(/fg) {{/if}}"""
+
+transient = """(fg ocean_purple)@wave(/fg) """
+right = ""

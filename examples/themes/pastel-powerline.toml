@@ -1,0 +1,30 @@
+# Pastel Powerline Theme
+# Inspired by Starship's Pastel Powerline preset
+
+name = "pastel-powerline"
+description = "Soft pastel colors with powerline segments"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+pastel_pink = "#f5c2e7"
+pastel_purple = "#cba6f7"
+pastel_cyan = "#89dceb"
+pastel_teal = "#94e2d5"
+pastel_green = "#a6e3a1"
+pastel_yellow = "#f9e2af"
+pastel_peach = "#fab387"
+text_dark = "#313244"
+
+[symbols]
+pill_left = "\ue0b6"
+pill_right = "\ue0b4"
+sep = "\ue0b0"
+
+[templates]
+main = """(fg pastel_pink)@pill_left(/fg)(bg pastel_pink)(fg text_dark) {{user}} (/fg)(/bg)(fg pastel_pink)(bg pastel_purple)@sep(/fg)(/bg)(bg pastel_purple)(fg text_dark)  {{pwd_short}} (/fg)(/bg){{#if git_branch}}(fg pastel_purple)(bg pastel_cyan)@sep(/fg)(/bg)(bg pastel_cyan)(fg text_dark)  {{git_branch}}{{#if (gt git_modified 0)}} (fg pastel_yellow)~{{git_modified}}(/fg){{/if}}{{#if (gt git_staged 0)}} (fg pastel_green)+{{git_staged}}(/fg){{/if}}{{#if (gt git_untracked 0)}} (fg pastel_peach)?{{git_untracked}}(/fg){{/if}} (/fg)(/bg)(fg pastel_cyan)(bg pastel_teal)@sep(/fg)(/bg){{else}}(fg pastel_purple)(bg pastel_teal)@sep(/fg)(/bg){{/if}}(bg pastel_teal)(fg text_dark)  {{time}} (/fg)(/bg)(fg pastel_teal)@sep(/fg)
+{{#if (eq exit_code 0)}}(fg pastel_green)❯(/fg) {{else}}(fg pastel_pink)❯(/fg) {{/if}}"""
+
+transient = """(fg pastel_teal){{time}}(/fg)
+{{#if (eq exit_code 0)}}(fg pastel_green)❯(/fg) {{else}}(fg pastel_pink)❯(/fg) {{/if}}"""
+right = ""

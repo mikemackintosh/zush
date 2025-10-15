@@ -1,0 +1,46 @@
+# DCS Theme - Oh My Posh Style
+# A beautiful multi-line prompt with powerline segments and modern colors
+
+name = "dcs"
+description = "Oh My Posh DCS-inspired theme with powerline segments"
+author = "Zush"
+version = "2.1.0"
+
+[colors]
+# Modern color palette (Catppuccin inspired)
+bg_dark = "#1e1e2e"        # Dark background
+bg_time = "#181825"        # Time segment background
+bg_lambda = "#89b4fa"      # Lambda segment background
+bg_dir = "#94e2d5"         # Directory segment background
+bg_git = "#fab387"         # Git segment background
+fg_dark = "#11111b"        # Dark foreground (for light backgrounds)
+fg_light = "#cdd6f4"       # Light foreground
+blue = "#89b4fa"           # Bright blue
+cyan = "#89dceb"           # Bright cyan
+green = "#a6e3a1"          # Soft green
+yellow = "#f9e2af"         # Warm yellow
+orange = "#fab387"         # Soft orange
+red = "#f38ba8"            # Soft red
+purple = "#cba6f7"         # Lavender purple
+teal = "#94e2d5"           # Mint teal
+gray = "#6c7086"           # Muted gray
+dark_gray = "#45475a"      # Darker gray
+bright_blue = "#74c7ec"    # Sky blue
+white = "#ffffff"          # Pure white for contrast
+
+[symbols]
+sep = ""                   # Powerline arrow
+lambda = "λ"
+clock = ""
+git = ""
+folder = ""
+
+[templates]
+main = """{{segment colors.bg_time colors.bright_blue "  "}}{{segment colors.bg_time colors.cyan time}}{{segment colors.bg_time colors.bright_blue " "}}{{bg colors.bg_lambda}}{{fg colors.bg_time}}{{segment colors.bg_lambda colors.fg_dark " λ "}}{{bg colors.bg_dir}}{{fg colors.bg_lambda}}{{segment colors.bg_dir colors.fg_dark "  "}}{{segment colors.bg_dir colors.fg_dark pwd_short}}{{segment colors.bg_dir colors.fg_dark " "}}{{reset}}{{fg colors.bg_dir}}{{#if git_branch}}{{bg colors.bg_git}}{{segment colors.bg_git colors.fg_dark "  "}}{{segment colors.bg_git colors.fg_dark git_branch}}{{#if (gt git_staged 0)}} {{bg colors.bg_git}}{{fg colors.green}}●{{fg colors.white}}{{git_staged}}{{/if}}{{#if (gt git_modified 0)}} {{bg colors.bg_git}}{{fg colors.yellow}}✚{{fg colors.white}}{{git_modified}}{{/if}}{{#if (gt git_added 0)}} {{bg colors.bg_git}}{{fg colors.green}}+{{fg colors.white}}{{git_added}}{{/if}}{{#if (gt git_deleted 0)}} {{bg colors.bg_git}}{{fg colors.red}}-{{fg colors.white}}{{git_deleted}}{{/if}}{{#if (gt git_renamed 0)}} {{bg colors.bg_git}}{{fg colors.cyan}}➜{{fg colors.white}}{{git_renamed}}{{/if}}{{#if (gt git_untracked 0)}} {{bg colors.bg_git}}{{fg colors.fg_dark}}…{{fg colors.white}}{{git_untracked}}{{/if}}{{#if (gt git_conflicted 0)}} {{bg colors.bg_git}}{{fg colors.red}}✖{{fg colors.white}}{{git_conflicted}}{{/if}}{{segment colors.bg_git colors.fg_dark " "}}{{reset}}{{fg colors.bg_git}}{{/if}}{{reset}}
+{{color colors.blue pwd_short}}
+{{#if (eq exit_code 0)}}{{color colors.green "❯"}} {{else}}{{color colors.red "✗"}} {{color colors.red exit_code}} {{color colors.red "❯"}} {{/if}}"""
+
+transient = """{{color colors.dark_gray time}}
+{{#if (eq exit_code 0)}}{{color colors.gray "❯"}} {{else}}{{color colors.red "❯"}} {{/if}}"""
+
+right = ""

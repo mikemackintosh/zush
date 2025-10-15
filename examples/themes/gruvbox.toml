@@ -1,0 +1,43 @@
+# Gruvbox Theme
+# Retro groove theme with warm earthy tones
+
+name = "gruvbox"
+description = "Gruvbox dark theme with warm retro colors"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+# Gruvbox dark color palette
+bg = "#282828"
+bg0_h = "#1d2021"
+bg0 = "#282828"
+bg1 = "#3c3836"
+bg2 = "#504945"
+bg3 = "#665c54"
+bg4 = "#7c6f64"
+fg = "#ebdbb2"
+fg0 = "#fbf1c7"
+fg1 = "#ebdbb2"
+fg2 = "#d5c4a1"
+fg3 = "#bdae93"
+fg4 = "#a89984"
+red = "#fb4934"
+green = "#b8bb26"
+yellow = "#fabd2f"
+blue = "#83a598"
+purple = "#d3869b"
+aqua = "#8ec07c"
+orange = "#fe8019"
+
+[symbols]
+prompt_arrow = "❯"
+git_branch = ""
+folder = ""
+
+[templates]
+main = """{{color colors.blue ""}} {{color colors.blue pwd_short}} {{#if git_branch}}{{color colors.purple ""}} {{color colors.purple git_branch}}{{#if (gt git_modified 0)}} {{color colors.yellow}}~{{git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{color colors.green}}●{{git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{color colors.orange}}?{{git_untracked}}{{/if}} {{/if}}
+{{#if (eq exit_code 0)}}{{color colors.green "❯"}} {{else}}{{color colors.red "❯"}} {{color colors.red exit_code}} {{color colors.red "❯"}} {{/if}}"""
+
+transient = """{{color colors.bg4 "❯"}} """
+
+right = ""

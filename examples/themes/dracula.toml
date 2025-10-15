@@ -1,0 +1,35 @@
+# Dracula Theme
+# The famous dark theme with vampiric colors
+
+name = "dracula"
+description = "Dracula theme with purple, pink, and cyan accents"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+# Dracula color palette
+bg = "#282a36"
+current_line = "#44475a"
+foreground = "#f8f8f2"
+comment = "#6272a4"
+cyan = "#8be9fd"
+green = "#50fa7b"
+orange = "#ffb86c"
+pink = "#ff79c6"
+purple = "#bd93f9"
+red = "#ff5555"
+yellow = "#f1fa8c"
+
+[symbols]
+prompt_arrow = "❯"
+git_branch = ""
+folder = ""
+lambda = "λ"
+
+[templates]
+main = """{{color colors.purple ""}} {{color colors.purple pwd_short}} {{#if git_branch}}{{color colors.pink ""}} {{color colors.pink git_branch}}{{#if (gt git_modified 0)}} {{color colors.yellow}}~{{git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{color colors.green}}+{{git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{color colors.red}}?{{git_untracked}}{{/if}} {{/if}}
+{{#if (eq exit_code 0)}}{{color colors.cyan "❯"}} {{else}}{{color colors.red "❯"}} {{color colors.red exit_code}} {{color colors.red "❯"}} {{/if}}"""
+
+transient = """{{color colors.comment "❯"}} """
+
+right = ""

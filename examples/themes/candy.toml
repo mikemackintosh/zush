@@ -1,0 +1,27 @@
+# Candy Theme
+
+name = "candy"
+description = "Sweet candy-colored pastels with playful energy"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+candy_pink = "#ffb3d9"
+candy_purple = "#d4a5f6"
+candy_mint = "#b3f5e0"
+candy_peach = "#ffc9a3"
+candy_lemon = "#fff8b3"
+candy_lavender = "#e0c3fc"
+candy_coral = "#ffb3ba"
+text_dark = "#2d2d2d"
+
+[symbols]
+pill_left = "\ue0b6"
+sep = "\ue0b0"
+
+[templates]
+main = """(fg candy_pink)@pill_left(/fg)(bg candy_pink)(fg text_dark) ✨{{user}} (/fg)(/bg)(fg candy_pink)(bg candy_purple)@sep(/fg)(/bg)(bg candy_purple)(fg text_dark)  {{pwd_short}} (/fg)(/bg){{#if git_branch}}(fg candy_purple)(bg candy_mint)@sep(/fg)(/bg)(bg candy_mint)(fg text_dark)  {{git_branch}}{{#if (gt git_modified 0)}} (fg candy_lemon)~{{git_modified}}(/fg){{/if}}{{#if (gt git_staged 0)}} (fg candy_peach)●{{git_staged}}(/fg){{/if}} (/fg)(/bg)(fg candy_mint)@sep(/fg){{else}}(fg candy_purple)@sep(/fg){{/if}}
+{{#if (eq exit_code 0)}}(fg candy_mint) (/fg) {{else}}(fg candy_coral) (/fg) {{/if}}"""
+
+transient = """(fg candy_lavender) (/fg) """
+right = ""

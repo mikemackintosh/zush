@@ -1,0 +1,28 @@
+# Sakura Theme
+# Japanese cherry blossom inspired pastel theme
+
+name = "sakura"
+description = "Cherry blossom inspired pastels with zen aesthetic"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+sakura_pink = "#ffb7c5"
+sakura_rose = "#ffd6e8"
+sakura_purple = "#e6d5f5"
+sakura_mint = "#d5f5e8"
+sakura_peach = "#ffe5d9"
+sakura_lavender = "#e8d5ff"
+text_dark = "#4a4a4a"
+
+[symbols]
+pill_left = "\ue0b6"
+sep = "\ue0b0"
+flower = ""
+
+[templates]
+main = """(fg sakura_pink)@pill_left(/fg)(bg sakura_pink)(fg text_dark)  {{user}} (/fg)(/bg)(fg sakura_pink)(bg sakura_purple)@sep(/fg)(/bg)(bg sakura_purple)(fg text_dark)  {{pwd_short}} (/fg)(/bg){{#if git_branch}}(fg sakura_purple)(bg sakura_mint)@sep(/fg)(/bg)(bg sakura_mint)(fg text_dark)  {{git_branch}}{{#if (gt git_modified 0)}} (fg sakura_peach)~{{git_modified}}(/fg){{/if}}{{#if (gt git_staged 0)}} (fg sakura_rose)●{{git_staged}}(/fg){{/if}} (/fg)(/bg)(fg sakura_mint)@sep(/fg){{else}}(fg sakura_purple)@sep(/fg){{/if}}
+{{#if (eq exit_code 0)}}(fg sakura_mint)❯(/fg) {{else}}(fg sakura_pink)❯(/fg) {{/if}}"""
+
+transient = """(fg sakura_lavender) (/fg) """
+right = ""

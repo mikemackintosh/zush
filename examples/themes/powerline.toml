@@ -1,0 +1,32 @@
+# Powerline Theme
+# True powerline with proper font icons and separators
+
+name = "powerline"
+description = "Classic powerline prompt with beautiful colors"
+author = "Zush"
+version = "3.1.0"
+
+[colors]
+# Powerline segment colors
+bg_user = "#2e7de9"        # Blue
+bg_host = "#7847bd"        # Purple
+bg_pwd = "#0f766e"         # Teal
+bg_git = "#f97316"         # Orange
+fg_light = "#f8fafc"       # Almost white
+fg_dark = "#1e1e2e"        # Almost black
+red = "#ef4444"            # Error red
+green = "#22c55e"          # Success green
+yellow = "#eab308"         # Warning yellow
+cyan = "#06b6d4"           # Info cyan
+
+[symbols]
+sep = ""                  # Powerline arrow
+git = ""                  # Git icon
+
+[templates]
+main = """{{segment colors.bg_user colors.fg_light " "}}{{segment colors.bg_user colors.fg_light user}}{{segment colors.bg_user colors.fg_light " "}}{{bg colors.bg_host}}{{fg colors.bg_user}}{{bg colors.bg_host}}{{segment colors.bg_host colors.fg_light " "}}{{segment colors.bg_host colors.fg_light host}}{{segment colors.bg_host colors.fg_light " "}}{{bg colors.bg_pwd}}{{fg colors.bg_host}}{{bg colors.bg_pwd}}{{segment colors.bg_pwd colors.fg_light "  "}}{{segment colors.bg_pwd colors.fg_light pwd_short}}{{segment colors.bg_pwd colors.fg_light " "}}{{reset}}{{fg colors.bg_pwd}}{{reset}}{{#if git_branch}} {{segment colors.bg_git colors.fg_dark "  "}}{{segment colors.bg_git colors.fg_dark git_branch}}{{#if (gt git_staged 0)}} {{bg colors.bg_git}}{{fg colors.green}}●{{fg colors.fg_light}}{{git_staged}}{{/if}}{{#if (gt git_modified 0)}} {{bg colors.bg_git}}{{fg colors.yellow}}✚{{fg colors.fg_light}}{{git_modified}}{{/if}}{{#if (gt git_added 0)}} {{bg colors.bg_git}}{{fg colors.green}}+{{fg colors.fg_light}}{{git_added}}{{/if}}{{#if (gt git_deleted 0)}} {{bg colors.bg_git}}{{fg colors.red}}-{{fg colors.fg_light}}{{git_deleted}}{{/if}}{{#if (gt git_renamed 0)}} {{bg colors.bg_git}}{{fg colors.cyan}}➜{{fg colors.fg_light}}{{git_renamed}}{{/if}}{{#if (gt git_untracked 0)}} {{bg colors.bg_git}}{{fg colors.fg_light}}…{{git_untracked}}{{/if}}{{#if (gt git_conflicted 0)}} {{bg colors.bg_git}}{{fg colors.red}}✖{{fg colors.fg_light}}{{git_conflicted}}{{/if}}{{segment colors.bg_git colors.fg_dark " "}}{{reset}}{{fg colors.bg_git}}{{reset}}{{/if}}
+{{#if (eq exit_code 0)}}{{color colors.green "❯"}} {{else}}{{color colors.red "["}}{{color colors.red exit_code}}{{color colors.red "] ❯"}} {{/if}}"""
+
+transient = """{{#if (eq exit_code 0)}}{{color colors.green "❯"}} {{else}}{{color colors.red "❯"}} {{/if}}"""
+
+right = ""
