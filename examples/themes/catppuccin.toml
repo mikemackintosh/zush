@@ -1,0 +1,74 @@
+# Catppuccin Powerline Theme (Mocha flavor)
+# Inspired by https://starship.rs/presets/catppuccin-powerline
+# Beautiful powerline-style prompt with Catppuccin color palette
+
+name = "catppuccin"
+description = "Catppuccin Mocha powerline theme with smooth color transitions"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+# Catppuccin Mocha palette
+# Base colors
+rosewater = "#f5e0dc"
+flamingo = "#f2cdcd"
+pink = "#f5c2e7"
+mauve = "#cba6f7"
+red = "#f38ba8"
+maroon = "#eba0ac"
+peach = "#fab387"
+yellow = "#f9e2af"
+green = "#a6e3a1"
+teal = "#94e2d5"
+sky = "#89dceb"
+sapphire = "#74c7ec"
+blue = "#89b4fa"
+lavender = "#b4befe"
+
+# Text colors
+text = "#cdd6f4"
+subtext1 = "#bac2de"
+subtext0 = "#a6adc8"
+overlay2 = "#9399b2"
+overlay1 = "#7f849c"
+overlay0 = "#6c7086"
+surface2 = "#585b70"
+surface1 = "#45475a"
+surface0 = "#313244"
+
+# Base colors
+base = "#1e1e2e"
+mantle = "#181825"
+crust = "#11111b"
+
+[symbols]
+# Powerline separators
+sep_right = ""
+sep_left = ""
+sep_thin_right = ""
+sep_thin_left = ""
+
+# Module icons
+folder = "󰉋"
+git_branch = ""
+git_added = "+"
+git_modified = "~"
+git_deleted = "-"
+git_untracked = "?"
+python = ""
+node = ""
+rust = ""
+docker = "󰡨"
+prompt_arrow = ""
+
+[templates]
+# Powerline style with seamless color transitions
+# Format: [os/user][directory][git][modules][time]
+# Each segment flows into the next with color-matched separators
+
+main = """{{segment colors.red colors.crust " "}}{{segment colors.red colors.crust user}}{{segment colors.red colors.crust " "}}{{bg colors.peach}}{{fg colors.red}}{{segment colors.peach colors.crust " 󰉋 "}}{{segment colors.peach colors.crust pwd_short}}{{segment colors.peach colors.crust " "}}{{#if git_branch}}{{bg colors.yellow}}{{fg colors.peach}}{{segment colors.yellow colors.crust "  "}}{{segment colors.yellow colors.crust git_branch}}{{#if (gt git_staged 0)}} {{color colors.green}}+{{git_staged}}{{reset}}{{bg colors.yellow}}{{/if}}{{#if (gt git_modified 0)}} {{color colors.yellow}}~{{git_modified}}{{reset}}{{bg colors.yellow}}{{/if}}{{#if (gt git_untracked 0)}} {{color colors.red}}?{{git_untracked}}{{reset}}{{bg colors.yellow}}{{/if}}{{#if (gt git_deleted 0)}} {{color colors.red}}-{{git_deleted}}{{reset}}{{bg colors.yellow}}{{/if}}{{segment colors.yellow colors.crust " "}}{{bg colors.green}}{{fg colors.yellow}}{{else}}{{bg colors.green}}{{fg colors.peach}}{{/if}}{{segment colors.green colors.crust "  "}}{{segment colors.green colors.crust time}}{{segment colors.green colors.crust " "}}{{reset}}{{fg colors.green}}{{reset}}
+{{#if (eq exit_code 0)}}{{color colors.green ""}} {{else}}{{color colors.red ""}} {{/if}}"""
+
+transient = """{{#if (eq exit_code 0)}}{{color colors.green ">"}} {{else}}{{color colors.red "x"}} {{/if}}"""
+
+right = ""

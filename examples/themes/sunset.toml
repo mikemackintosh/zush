@@ -1,0 +1,29 @@
+# Sunset Theme
+
+name = "sunset"
+description = "Warm sunset gradient with golden hour vibes"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+sunset_gold = "#ffd89b"
+sunset_peach = "#ffb88c"
+sunset_coral = "#ff9a8b"
+sunset_pink = "#ff8ba7"
+sunset_purple = "#d8a9ff"
+sunset_lavender = "#c5a9ff"
+sunset_blue = "#a9c5ff"
+text_dark = "#3d3d3d"
+
+[symbols]
+pill_left = "\ue0b6"
+sep = "\ue0b0"
+sun = ""
+
+[templates]
+main = """(fg sunset_gold)@pill_left(/fg)(bg sunset_gold)(fg text_dark) @sun {{user}} (/fg)(/bg)(fg sunset_gold)(bg sunset_peach)@sep(/fg)(/bg)(bg sunset_peach)(fg text_dark)  {{pwd_short}} (/fg)(/bg){{#if git_branch}}(fg sunset_peach)(bg sunset_pink)@sep(/fg)(/bg)(bg sunset_pink)(fg text_dark)  {{git_branch}}{{#if (gt git_modified 0)}} (fg sunset_gold)~{{git_modified}}(/fg){{/if}}{{#if (gt git_staged 0)}} (fg sunset_coral)●{{git_staged}}(/fg){{/if}} (/fg)(/bg)(fg sunset_pink)(bg sunset_purple)@sep(/fg)(/bg){{else}}(fg sunset_peach)(bg sunset_purple)@sep(/fg)(/bg){{/if}}(bg sunset_purple)(fg text_dark)  {{time}} (/fg)(/bg)(fg sunset_purple)@sep(/fg)
+{{#if (eq exit_code 0)}}(fg sunset_coral)❯(/fg) {{else}}(fg sunset_pink)❯(/fg) {{/if}}"""
+
+transient = """(fg sunset_blue){{time}}(/fg)
+(fg sunset_coral)❯(/fg) """
+right = ""

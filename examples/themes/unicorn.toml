@@ -1,0 +1,29 @@
+# Unicorn Theme
+
+name = "unicorn"
+description = "Magical rainbow pastels with sparkles and wonder"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+unicorn_pink = "#ffb3d9"
+unicorn_purple = "#d4a5f6"
+unicorn_blue = "#a3c5ff"
+unicorn_cyan = "#a3f5ff"
+unicorn_mint = "#b3ffd9"
+unicorn_yellow = "#fff5b3"
+unicorn_peach = "#ffd4b3"
+unicorn_lavender = "#e0c3fc"
+text_dark = "#4a3d5a"
+
+[symbols]
+pill_left = "\ue0b6"
+sep = "\ue0b0"
+star = ""
+
+[templates]
+main = """(fg unicorn_pink)@pill_left(/fg)(bg unicorn_pink)(fg text_dark) @star {{user}} (/fg)(/bg)(fg unicorn_pink)(bg unicorn_purple)@sep(/fg)(/bg)(bg unicorn_purple)(fg text_dark)  {{pwd_short}} (/fg)(/bg){{#if git_branch}}(fg unicorn_purple)(bg unicorn_blue)@sep(/fg)(/bg)(bg unicorn_blue)(fg text_dark)  {{git_branch}}{{#if (gt git_modified 0)}} (fg unicorn_yellow)~{{git_modified}}(/fg){{/if}}{{#if (gt git_staged 0)}} (fg unicorn_mint)●{{git_staged}}(/fg){{/if}}{{#if (gt git_untracked 0)}} (fg unicorn_peach)?{{git_untracked}}(/fg){{/if}} (/fg)(/bg)(fg unicorn_blue)(bg unicorn_cyan)@sep(/fg)(/bg){{else}}(fg unicorn_purple)(bg unicorn_cyan)@sep(/fg)(/bg){{/if}}(bg unicorn_cyan)(fg text_dark)  {{time}} @star(/fg)(/bg)(fg unicorn_cyan)@sep(/fg)
+{{#if (eq exit_code 0)}}(fg unicorn_mint)@star(/fg) {{else}}(fg unicorn_pink)@star(/fg) {{/if}}"""
+
+transient = """(fg unicorn_lavender)✨(/fg) """
+right = ""
