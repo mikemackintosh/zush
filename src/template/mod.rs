@@ -40,6 +40,7 @@ impl TemplateEngine {
         handlebars.register_helper("format_path", Box::new(format_path_helper));
         handlebars.register_helper("format_time", Box::new(format_time_helper));
         handlebars.register_helper("fill_space", Box::new(fill_space_helper));
+        handlebars.register_helper("gradient", Box::new(gradient_helper));
 
         // Disable HTML escaping for terminal output
         handlebars.register_escape_fn(handlebars::no_escape);
@@ -553,6 +554,70 @@ fn fill_space_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderCont
         let spaces_needed = terminal_width - total_content;
         write!(out, "{:width$}", "", width = spaces_needed)?;
     }
+
+    Ok(())
+}
+
+/// Gradient helper: {{gradient "start_color" "end_color" "text"}}
+/// Creates a color gradient across the text from start color to end color
+/// Each character gets a progressively interpolated color
+///
+/// Examples:
+///   {{gradient "#1abc9c" "#7aa2f7" "username"}} -> gradient from teal to blue
+///   {{gradient colors.teal colors.blue "username"}} -> using color variables
+fn gradient_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+    let params = h.params();
+
+    if params.len() < 3 {
+        return Ok(());
+    }
+
+    // Get start and end colors
+    let start_hex = params[0].value().as_str().unwrap_or("#ffffff");
+    let end_hex = params[1].value().as_str().unwrap_or("#ffffff");
+    let text = params[2].value().as_str().unwrap_or("");
+
+    // Parse colors
+    let start_color = match Color::from_hex(start_hex) {
+        Ok(c) => c,
+        Err(_) => return Ok(()),
+    };
+    let end_color = match Color::from_hex(end_hex) {
+        Ok(c) => c,
+        Err(_) => return Ok(()),
+    };
+
+    // Get RGB components
+    let (r1, g1, b1) = (start_color.r, start_color.g, start_color.b);
+    let (r2, g2, b2) = (end_color.r, end_color.g, end_color.b);
+
+    // Calculate gradient for each character
+    let chars: Vec<char> = text.chars().collect();
+    let char_count = chars.len();
+
+    if char_count == 0 {
+        return Ok(());
+    }
+
+    for (i, ch) in chars.iter().enumerate() {
+        let t = if char_count == 1 {
+            0.0
+        } else {
+            i as f32 / (char_count - 1) as f32
+        };
+
+        // Interpolate RGB values
+        let r = (r1 as f32 + (r2 as f32 - r1 as f32) * t) as u8;
+        let g = (g1 as f32 + (g2 as f32 - g1 as f32) * t) as u8;
+        let b = (b1 as f32 + (b2 as f32 - b1 as f32) * t) as u8;
+
+        // Write character with interpolated color
+        let color = Color::new(r, g, b);
+        write!(out, "{}{}", color.to_ansi_fg(), ch)?;
+    }
+
+    // Reset color at the end
+    write!(out, "\x1b[0m")?;
 
     Ok(())
 }
