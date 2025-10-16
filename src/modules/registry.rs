@@ -1,9 +1,9 @@
 // Module registry - manages and executes modules
 
 use super::{Module, ModuleContext};
+use anyhow::Result;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use anyhow::Result;
 
 /// Registry that manages all available modules
 pub struct ModuleRegistry {
@@ -100,7 +100,11 @@ impl ModuleRegistry {
                 }
 
                 // Render with timeout
-                match Self::render_with_timeout(module.as_ref(), context, Duration::from_millis(100)) {
+                match Self::render_with_timeout(
+                    module.as_ref(),
+                    context,
+                    Duration::from_millis(100),
+                ) {
                     Ok(output) => {
                         let module_output = ModuleOutput {
                             id: module_id.clone(),

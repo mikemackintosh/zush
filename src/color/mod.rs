@@ -1,7 +1,7 @@
+use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
-use serde::{Deserialize, Serialize};
-use anyhow::{Result, anyhow};
 
 /// Represents a 24-bit RGB color
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -107,32 +107,124 @@ impl fmt::Display for Color {
 pub mod tokyo_night {
     use super::Color;
 
-    pub const BG: Color = Color { r: 0x1a, g: 0x1b, b: 0x26 };
-    pub const FG: Color = Color { r: 0xc0, g: 0xca, b: 0xf5 };
-    pub const FG_DARK: Color = Color { r: 0xa9, g: 0xb1, b: 0xd6 };
-    pub const FG_DIM: Color = Color { r: 0x56, g: 0x5f, b: 0x89 };
+    pub const BG: Color = Color {
+        r: 0x1a,
+        g: 0x1b,
+        b: 0x26,
+    };
+    pub const FG: Color = Color {
+        r: 0xc0,
+        g: 0xca,
+        b: 0xf5,
+    };
+    pub const FG_DARK: Color = Color {
+        r: 0xa9,
+        g: 0xb1,
+        b: 0xd6,
+    };
+    pub const FG_DIM: Color = Color {
+        r: 0x56,
+        g: 0x5f,
+        b: 0x89,
+    };
 
-    pub const BLACK: Color = Color { r: 0x15, g: 0x16, b: 0x1e };
-    pub const RED: Color = Color { r: 0xf7, g: 0x76, b: 0x8e };
-    pub const GREEN: Color = Color { r: 0x9e, g: 0xce, b: 0x6a };
-    pub const YELLOW: Color = Color { r: 0xe0, g: 0xaf, b: 0x68 };
-    pub const BLUE: Color = Color { r: 0x7a, g: 0xa2, b: 0xf7 };
-    pub const MAGENTA: Color = Color { r: 0xbb, g: 0x9a, b: 0xf7 };
-    pub const CYAN: Color = Color { r: 0x7d, g: 0xcf, b: 0xff };
-    pub const WHITE: Color = Color { r: 0xc0, g: 0xca, b: 0xf5 };
+    pub const BLACK: Color = Color {
+        r: 0x15,
+        g: 0x16,
+        b: 0x1e,
+    };
+    pub const RED: Color = Color {
+        r: 0xf7,
+        g: 0x76,
+        b: 0x8e,
+    };
+    pub const GREEN: Color = Color {
+        r: 0x9e,
+        g: 0xce,
+        b: 0x6a,
+    };
+    pub const YELLOW: Color = Color {
+        r: 0xe0,
+        g: 0xaf,
+        b: 0x68,
+    };
+    pub const BLUE: Color = Color {
+        r: 0x7a,
+        g: 0xa2,
+        b: 0xf7,
+    };
+    pub const MAGENTA: Color = Color {
+        r: 0xbb,
+        g: 0x9a,
+        b: 0xf7,
+    };
+    pub const CYAN: Color = Color {
+        r: 0x7d,
+        g: 0xcf,
+        b: 0xff,
+    };
+    pub const WHITE: Color = Color {
+        r: 0xc0,
+        g: 0xca,
+        b: 0xf5,
+    };
 
-    pub const ORANGE: Color = Color { r: 0xff, g: 0x9e, b: 0x64 };
-    pub const PURPLE: Color = Color { r: 0x9d, g: 0x7c, b: 0xd8 };
-    pub const TEAL: Color = Color { r: 0x1a, g: 0xbc, b: 0x9c };
+    pub const ORANGE: Color = Color {
+        r: 0xff,
+        g: 0x9e,
+        b: 0x64,
+    };
+    pub const PURPLE: Color = Color {
+        r: 0x9d,
+        g: 0x7c,
+        b: 0xd8,
+    };
+    pub const TEAL: Color = Color {
+        r: 0x1a,
+        g: 0xbc,
+        b: 0x9c,
+    };
 
-    pub const BRIGHT_BLACK: Color = Color { r: 0x41, g: 0x4a, b: 0x68 };
-    pub const BRIGHT_RED: Color = Color { r: 0xf7, g: 0x76, b: 0x8e };
-    pub const BRIGHT_GREEN: Color = Color { r: 0x9e, g: 0xce, b: 0x6a };
-    pub const BRIGHT_YELLOW: Color = Color { r: 0xe0, g: 0xaf, b: 0x68 };
-    pub const BRIGHT_BLUE: Color = Color { r: 0x7a, g: 0xa2, b: 0xf7 };
-    pub const BRIGHT_MAGENTA: Color = Color { r: 0xbb, g: 0x9a, b: 0xf7 };
-    pub const BRIGHT_CYAN: Color = Color { r: 0x7d, g: 0xcf, b: 0xff };
-    pub const BRIGHT_WHITE: Color = Color { r: 0xd5, g: 0xd6, b: 0xdb };
+    pub const BRIGHT_BLACK: Color = Color {
+        r: 0x41,
+        g: 0x4a,
+        b: 0x68,
+    };
+    pub const BRIGHT_RED: Color = Color {
+        r: 0xf7,
+        g: 0x76,
+        b: 0x8e,
+    };
+    pub const BRIGHT_GREEN: Color = Color {
+        r: 0x9e,
+        g: 0xce,
+        b: 0x6a,
+    };
+    pub const BRIGHT_YELLOW: Color = Color {
+        r: 0xe0,
+        g: 0xaf,
+        b: 0x68,
+    };
+    pub const BRIGHT_BLUE: Color = Color {
+        r: 0x7a,
+        g: 0xa2,
+        b: 0xf7,
+    };
+    pub const BRIGHT_MAGENTA: Color = Color {
+        r: 0xbb,
+        g: 0x9a,
+        b: 0xf7,
+    };
+    pub const BRIGHT_CYAN: Color = Color {
+        r: 0x7d,
+        g: 0xcf,
+        b: 0xff,
+    };
+    pub const BRIGHT_WHITE: Color = Color {
+        r: 0xd5,
+        g: 0xd6,
+        b: 0xdb,
+    };
 }
 
 /// Color scheme trait for custom themes

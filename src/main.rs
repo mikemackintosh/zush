@@ -1,17 +1,17 @@
 mod buffer;
 mod color;
-mod template;
-mod segments;
 mod config;
 mod git;
 mod modules;
+mod segments;
+mod template;
 
-use std::fs;
-use std::path::PathBuf;
-use std::collections::HashMap;
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
 
 use buffer::TerminalBuffer;
 use color::tokyo_night;
@@ -88,7 +88,11 @@ fn main() -> Result<()> {
         Some(Commands::Config) => {
             print_default_config()?;
         }
-        Some(Commands::Prompt { context, exit_code, execution_time }) => {
+        Some(Commands::Prompt {
+            context,
+            exit_code,
+            execution_time,
+        }) => {
             render_prompt(&cli, context.as_deref(), *exit_code, *execution_time)?;
         }
         None => {
@@ -603,9 +607,13 @@ fn load_theme(theme_name: &str) -> Result<String> {
         PathBuf::from(theme_name)
     } else {
         // Look for theme in themes directory
-        let home = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
+        let home =
+            dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
         let theme_file = format!("{}.toml", theme_name);
-        home.join(".config").join("zush").join("themes").join(theme_file)
+        home.join(".config")
+            .join("zush")
+            .join("themes")
+            .join(theme_file)
     };
 
     if theme_path.exists() {
@@ -714,7 +722,8 @@ fn render_prompt(
                 for (segment_name, segment_data) in segments_table {
                     if let Some(segment_props) = segment_data.as_table() {
                         // Extract content (required)
-                        if let Some(content) = segment_props.get("content").and_then(|v| v.as_str()) {
+                        if let Some(content) = segment_props.get("content").and_then(|v| v.as_str())
+                        {
                             // Normalize multiline content: strip leading/trailing whitespace from each line
                             // and join into a single line. This allows readable multiline TOML without
                             // inserting actual newlines into the template.
@@ -733,10 +742,8 @@ fn render_prompt(
                                     .join("")
                             };
 
-                            let mut segment = template::SegmentDef::new(
-                                segment_name.clone(),
-                                normalized_content
-                            );
+                            let mut segment =
+                                template::SegmentDef::new(segment_name.clone(), normalized_content);
 
                             // Add optional properties using builder methods
                             if let Some(bg) = segment_props.get("bg").and_then(|v| v.as_str()) {
@@ -748,7 +755,9 @@ fn render_prompt(
                             if let Some(sep) = segment_props.get("sep").and_then(|v| v.as_str()) {
                                 segment = segment.with_sep(sep.to_string());
                             }
-                            if let Some(left_cap) = segment_props.get("left_cap").and_then(|v| v.as_str()) {
+                            if let Some(left_cap) =
+                                segment_props.get("left_cap").and_then(|v| v.as_str())
+                            {
                                 segment = segment.with_left_cap(left_cap.to_string());
                             }
 
@@ -772,7 +781,9 @@ fn render_prompt(
         if let Err(e) = engine.load_templates_from_config(toml_str) {
             // If loading fails, print stylized error (unless quiet mode) and register defaults
             if !cli.quiet {
-                eprintln!("\n\x1b[38;2;243;139;168m\x1b[1m✖ Template Loading Error\x1b[22m\x1b[39m");
+                eprintln!(
+                    "\n\x1b[38;2;243;139;168m\x1b[1m✖ Template Loading Error\x1b[22m\x1b[39m"
+                );
                 eprintln!("\x1b[38;2;249;226;175m{}\x1b[39m\n", e);
             }
             register_default_templates(&mut engine)?;
@@ -803,7 +814,10 @@ fn render_prompt(
     let exec_time_ms = execution_time.unwrap_or(0.0) * 1000.0;
     context.insert("execution_time".to_string(), json!(exec_time_ms));
     context.insert("execution_time_ms".to_string(), json!(exec_time_ms as i64));
-    context.insert("execution_time_s".to_string(), json!(execution_time.unwrap_or(0.0)));
+    context.insert(
+        "execution_time_s".to_string(),
+        json!(execution_time.unwrap_or(0.0)),
+    );
 
     // Collect environment information natively (avoids shell overhead)
     // Get current time (replaces date +%H:%M:%S)
@@ -890,12 +904,18 @@ fn render_prompt(
     // Ensure git status variables exist with defaults (if not in git repo)
     context.entry("git_branch".to_string()).or_insert(json!(""));
     context.entry("git_staged".to_string()).or_insert(json!(0));
-    context.entry("git_modified".to_string()).or_insert(json!(0));
+    context
+        .entry("git_modified".to_string())
+        .or_insert(json!(0));
     context.entry("git_added".to_string()).or_insert(json!(0));
     context.entry("git_deleted".to_string()).or_insert(json!(0));
     context.entry("git_renamed".to_string()).or_insert(json!(0));
-    context.entry("git_untracked".to_string()).or_insert(json!(0));
-    context.entry("git_conflicted".to_string()).or_insert(json!(0));
+    context
+        .entry("git_untracked".to_string())
+        .or_insert(json!(0));
+    context
+        .entry("git_conflicted".to_string())
+        .or_insert(json!(0));
 
     // Collect module information (Python, Node, Rust, Docker, etc.)
     // This is done natively for performance - context-aware detection
@@ -1026,11 +1046,13 @@ fn render_prompt(
     context.insert("symbols".to_string(), json!(symbols));
 
     // Get terminal width directly from the terminal (not from shell)
-    let terminal_width = if let Some((terminal_size::Width(w), _)) = terminal_size::terminal_size() {
+    let terminal_width = if let Some((terminal_size::Width(w), _)) = terminal_size::terminal_size()
+    {
         w as usize
     } else {
         // Fallback to context if terminal size detection fails
-        context.get("terminal_width")
+        context
+            .get("terminal_width")
             .and_then(|v| v.as_u64())
             .unwrap_or(80) as usize
     };
@@ -1063,7 +1085,13 @@ fn render_prompt(
                 } else {
                     // Add spacing between left and right
                     let spacing = terminal_width - total_content;
-                    format!("{}{:width$}{}", left_output, "", right_output, width = spacing)
+                    format!(
+                        "{}{:width$}{}",
+                        left_output,
+                        "",
+                        right_output,
+                        width = spacing
+                    )
                 };
 
                 context.insert("first_line".to_string(), json!(first_line));
@@ -1147,8 +1175,11 @@ fn register_default_templates(engine: &mut TemplateEngine) -> Result<()> {
     engine.register_template("right", "")?;
 
     // Transient prompt
-    engine.register_template("transient", r#"(dim){{time}}(/dim)
-(fg #7aa2f7)❯(/fg) "#)?;
+    engine.register_template(
+        "transient",
+        r#"(dim){{time}}(/dim)
+(fg #7aa2f7)❯(/fg) "#,
+    )?;
 
     Ok(())
 }
@@ -1192,7 +1223,8 @@ fn parse_unicode_escapes(s: &str) -> String {
                         // Low surrogate
                         if let Some(high) = pending_surrogate {
                             // Combine surrogates to get actual code point
-                            let combined = 0x10000 + ((high - 0xD800) << 10) + (code_point - 0xDC00);
+                            let combined =
+                                0x10000 + ((high - 0xD800) << 10) + (code_point - 0xDC00);
                             if let Some(unicode_char) = char::from_u32(combined) {
                                 result.push(unicode_char);
                                 pending_surrogate = None;

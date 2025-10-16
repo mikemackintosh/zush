@@ -1,12 +1,12 @@
-use std::collections::HashMap;
-use handlebars::{Handlebars, RenderContext, Helper, Output, HelperResult, Context};
+use crate::color::Color;
+use anyhow::{Context as AnyhowContext, Result};
+use handlebars::{Context, Handlebars, Helper, HelperResult, Output, RenderContext};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use anyhow::{Result, Context as AnyhowContext};
-use crate::color::Color;
+use std::collections::HashMap;
 
 mod preprocessor;
-pub use preprocessor::{TemplatePreprocessor, SegmentDef};
+pub use preprocessor::{SegmentDef, TemplatePreprocessor};
 
 /// Template engine for prompt rendering
 pub struct TemplateEngine {
@@ -72,10 +72,8 @@ impl TemplateEngine {
     /// Register a template (with preprocessing for simplified syntax)
     pub fn register_template(&mut self, name: &str, template: &str) -> Result<()> {
         // Preprocess the template to convert simplified syntax
-        let mut preprocessor = TemplatePreprocessor::with_symbols(
-            self.colors.clone(),
-            self.symbols.clone()
-        );
+        let mut preprocessor =
+            TemplatePreprocessor::with_symbols(self.colors.clone(), self.symbols.clone());
         // Add pre-defined segments from TOML
         preprocessor.add_segments(self.segments.clone());
         let processed = preprocessor.preprocess(template)?;
@@ -109,7 +107,8 @@ impl TemplateEngine {
 
     /// Render a template
     pub fn render(&self, template_name: &str) -> Result<String> {
-        let result = self.handlebars
+        let result = self
+            .handlebars
             .render(template_name, &self.context_data)
             .with_context(|| format!("Failed to render template: {}", template_name))?;
         Ok(result)
@@ -118,15 +117,14 @@ impl TemplateEngine {
     /// Render a template string directly (with preprocessing for simplified syntax)
     pub fn render_string(&self, template: &str) -> Result<String> {
         // Preprocess the template to convert simplified syntax
-        let mut preprocessor = TemplatePreprocessor::with_symbols(
-            self.colors.clone(),
-            self.symbols.clone()
-        );
+        let mut preprocessor =
+            TemplatePreprocessor::with_symbols(self.colors.clone(), self.symbols.clone());
         // Add pre-defined segments from TOML
         preprocessor.add_segments(self.segments.clone());
         let processed = preprocessor.preprocess(template)?;
 
-        let result = self.handlebars
+        let result = self
+            .handlebars
             .render_template(&processed, &self.context_data)
             .with_context(|| "Failed to render template string")?;
         Ok(result)
@@ -154,19 +152,19 @@ pub struct SegmentDefinition {
     pub content: String,
 
     #[serde(default = "default_sep")]
-    pub sep: String,  // "sharp", "pill", "slant", "flame", "none"
+    pub sep: String, // "sharp", "pill", "slant", "flame", "none"
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sep_fg: Option<String>,  // Separator color (defaults to bg)
+    pub sep_fg: Option<String>, // Separator color (defaults to bg)
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub left_cap: Option<String>,  // "pill", "sharp", "slant", "flame", "none"
+    pub left_cap: Option<String>, // "pill", "sharp", "slant", "flame", "none"
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub left_cap_fg: Option<String>,  // Left cap color
+    pub left_cap_fg: Option<String>, // Left cap color
 
     #[serde(default)]
-    pub fill: bool,  // Fill rest of line with background
+    pub fill: bool, // Fill rest of line with background
 }
 
 fn default_sep() -> String {
@@ -176,7 +174,13 @@ fn default_sep() -> String {
 // Helper functions for Handlebars
 
 /// Color helper: {{color "hex" "text"}} or {{color r g b "text"}}
-fn color_helper(h: &Helper, _: &Handlebars, _ctx: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn color_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _ctx: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let params = h.params();
 
     if params.len() == 2 {
@@ -210,7 +214,13 @@ fn color_helper(h: &Helper, _: &Handlebars, _ctx: &Context, _: &mut RenderContex
 }
 
 /// Background color helper: {{bg "hex"}} or {{bg "hex" "text"}}
-fn bg_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn bg_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let params = h.params();
 
     if params.len() == 1 {
@@ -232,8 +242,17 @@ fn bg_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out
 }
 
 /// Foreground color helper (no auto-reset): {{fg "hex"}}
-fn fg_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
-    let hex = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("#ffffff");
+fn fg_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
+    let hex = h
+        .param(0)
+        .and_then(|v| v.value().as_str())
+        .unwrap_or("#ffffff");
     if let Ok(color) = Color::from_hex(hex) {
         write!(out, "{}", color.to_ansi_fg())?;
     }
@@ -242,7 +261,13 @@ fn fg_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out
 
 /// Powerline segment helper: {{segment "bg_color" "fg_color" "text"}}
 /// Sets both background and foreground, no auto-reset
-fn segment_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn segment_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let params = h.params();
 
     if params.len() == 3 {
@@ -251,7 +276,13 @@ fn segment_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext
         let text = params[2].value().as_str().unwrap_or("");
 
         if let (Ok(bg_color), Ok(fg_color)) = (Color::from_hex(bg_hex), Color::from_hex(fg_hex)) {
-            write!(out, "{}{}{}", bg_color.to_ansi_bg(), fg_color.to_ansi_fg(), text)?;
+            write!(
+                out,
+                "{}{}{}",
+                bg_color.to_ansi_bg(),
+                fg_color.to_ansi_fg(),
+                text
+            )?;
         }
     }
 
@@ -259,42 +290,77 @@ fn segment_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext
 }
 
 /// Bold helper: {{bold "text"}}
-fn bold_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn bold_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
     write!(out, "\x1b[1m{}\x1b[0m", text)?;
     Ok(())
 }
 
 /// Dim helper: {{dim "text"}}
-fn dim_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn dim_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
     write!(out, "\x1b[2m{}\x1b[0m", text)?;
     Ok(())
 }
 
 /// Italic helper: {{italic "text"}}
-fn italic_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn italic_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
     write!(out, "\x1b[3m{}\x1b[0m", text)?;
     Ok(())
 }
 
 /// Underline helper: {{underline "text"}}
-fn underline_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn underline_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
     write!(out, "\x1b[4m{}\x1b[0m", text)?;
     Ok(())
 }
 
 /// Reset helper: {{reset}}
-fn reset_helper(_: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn reset_helper(
+    _: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     write!(out, "\x1b[0m")?;
     Ok(())
 }
 
-
 /// Truncate helper: {{truncate text max_length}}
-fn truncate_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn truncate_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
     let max_len = h.param(1).and_then(|v| v.value().as_u64()).unwrap_or(30) as usize;
 
@@ -308,7 +374,13 @@ fn truncate_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContex
 }
 
 /// Pad left helper: {{pad_left text width}}
-fn pad_left_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn pad_left_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
     let width = h.param(1).and_then(|v| v.value().as_u64()).unwrap_or(0) as usize;
 
@@ -317,7 +389,13 @@ fn pad_left_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContex
 }
 
 /// Pad right helper: {{pad_right text width}}
-fn pad_right_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn pad_right_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
     let width = h.param(1).and_then(|v| v.value().as_u64()).unwrap_or(0) as usize;
 
@@ -326,7 +404,13 @@ fn pad_right_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderConte
 }
 
 /// Center helper: {{center text width}}
-fn center_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn center_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let text = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
     let width = h.param(1).and_then(|v| v.value().as_u64()).unwrap_or(0) as usize;
 
@@ -343,7 +427,13 @@ fn center_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext,
 
 /// Line helper: {{line terminal_width "left_content" "right_content"}}
 /// Renders a line with left and right content, filling the space between
-fn line_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn line_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     use crate::buffer::TerminalBuffer;
 
     let params = h.params();
@@ -381,9 +471,18 @@ fn line_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, o
 ///   {{format_path pwd "first:1"}} -> ~/p/z/z-p-r
 ///   {{format_path pwd "depth:2"}} -> ~/zuper-shell-prompt/zush-prompt-rust
 ///   {{format_path pwd "ellipsis"}} -> ~/…/zush-prompt-rust
-fn format_path_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn format_path_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let path = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
-    let mode = h.param(1).and_then(|v| v.value().as_str()).unwrap_or("full");
+    let mode = h
+        .param(1)
+        .and_then(|v| v.value().as_str())
+        .unwrap_or("full");
 
     let result = match mode {
         "last" => {
@@ -397,27 +496,33 @@ fn format_path_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderCon
             } else {
                 path.to_string()
             }
-        },
+        }
         mode if mode.starts_with("first:") => {
             // First N characters of each segment
-            let n = mode.strip_prefix("first:")
+            let n = mode
+                .strip_prefix("first:")
                 .and_then(|s| s.parse::<usize>().ok())
                 .unwrap_or(1);
 
             let segments: Vec<&str> = path.split('/').collect();
-            let formatted: Vec<String> = segments.iter().enumerate().map(|(i, seg)| {
-                // Don't abbreviate ~ or the last segment
-                if seg == &"~" || i == segments.len() - 1 || seg.is_empty() {
-                    seg.to_string()
-                } else {
-                    seg.chars().take(n).collect()
-                }
-            }).collect();
+            let formatted: Vec<String> = segments
+                .iter()
+                .enumerate()
+                .map(|(i, seg)| {
+                    // Don't abbreviate ~ or the last segment
+                    if seg == &"~" || i == segments.len() - 1 || seg.is_empty() {
+                        seg.to_string()
+                    } else {
+                        seg.chars().take(n).collect()
+                    }
+                })
+                .collect();
             formatted.join("/")
-        },
+        }
         mode if mode.starts_with("depth:") => {
             // Only deepest N directories
-            let n = mode.strip_prefix("depth:")
+            let n = mode
+                .strip_prefix("depth:")
                 .and_then(|s| s.parse::<usize>().ok())
                 .unwrap_or(2);
 
@@ -430,7 +535,7 @@ fn format_path_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderCon
                 let start_idx = segments.len() - n;
                 format!("…/{}", segments[start_idx..].join("/"))
             }
-        },
+        }
         "ellipsis" => {
             // Base + ellipsis + current (show first and last, hide middle)
             let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
@@ -441,7 +546,7 @@ fn format_path_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderCon
                 let last = segments[segments.len() - 1];
                 format!("{}/…/{}", first, last)
             }
-        },
+        }
         _ => path.to_string(), // "full" or unknown mode
     };
 
@@ -468,12 +573,21 @@ fn format_path_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderCon
 ///   {{format_time time "(dim)%H(/dim):%M:%S"}} -> dim hour, normal minutes/seconds
 ///   {{format_time time "(dim)%H(/dim):(bold)%M:%S(/bold)"}} -> dim hour, bold min:sec
 ///   {{format_time time "%I:%M %p"}} -> 12-hour format with AM/PM
-fn format_time_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn format_time_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     use chrono::{Local, Timelike};
 
     // Get the time string from context (if provided) or use current time
     let time_str = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
-    let format_str = h.param(1).and_then(|v| v.value().as_str()).unwrap_or("%H:%M:%S");
+    let format_str = h
+        .param(1)
+        .and_then(|v| v.value().as_str())
+        .unwrap_or("%H:%M:%S");
 
     // Get current time for formatting
     let now = Local::now();
@@ -524,24 +638,22 @@ fn format_time_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderCon
 /// Example:
 ///   {{fill_space terminal_width pwd_short " / " 4}}
 ///   This accounts for pwd_short (left), " / " (right), and 4 extra characters (status icon segment)
-fn fill_space_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn fill_space_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     use crate::buffer::TerminalBuffer;
 
-    let terminal_width = h.param(0)
-        .and_then(|v| v.value().as_u64())
-        .unwrap_or(80) as usize;
+    let terminal_width = h.param(0).and_then(|v| v.value().as_u64()).unwrap_or(80) as usize;
 
-    let left_content = h.param(1)
-        .and_then(|v| v.value().as_str())
-        .unwrap_or("");
+    let left_content = h.param(1).and_then(|v| v.value().as_str()).unwrap_or("");
 
-    let right_content = h.param(2)
-        .and_then(|v| v.value().as_str())
-        .unwrap_or("");
+    let right_content = h.param(2).and_then(|v| v.value().as_str()).unwrap_or("");
 
-    let offset = h.param(3)
-        .and_then(|v| v.value().as_u64())
-        .unwrap_or(0) as usize;
+    let offset = h.param(3).and_then(|v| v.value().as_u64()).unwrap_or(0) as usize;
 
     // Calculate visible widths (stripping ANSI codes)
     let left_visible = TerminalBuffer::visible_width(left_content);
@@ -565,7 +677,13 @@ fn fill_space_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderCont
 /// Examples:
 ///   {{gradient "#1abc9c" "#7aa2f7" "username"}} -> gradient from teal to blue
 ///   {{gradient colors.teal colors.blue "username"}} -> using color variables
-fn gradient_helper(h: &Helper, _: &Handlebars, _: &Context, _: &mut RenderContext, out: &mut dyn Output) -> HelperResult {
+fn gradient_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
     let params = h.params();
 
     if params.len() < 3 {
@@ -642,7 +760,9 @@ mod tests {
     fn test_color_helper() {
         let mut engine = TemplateEngine::new().unwrap();
 
-        engine.register_template("test", r##"{{color "#ff0000" "Red Text"}}"##).unwrap();
+        engine
+            .register_template("test", r##"{{color "#ff0000" "Red Text"}}"##)
+            .unwrap();
 
         let result = engine.render("test").unwrap();
         assert!(result.contains("\x1b[38;2;255;0;0m"));
@@ -653,7 +773,9 @@ mod tests {
     fn test_line_helper() {
         let mut engine = TemplateEngine::new().unwrap();
 
-        engine.register_template("test", r##"{{line 80 "LEFT" "RIGHT"}}"##).unwrap();
+        engine
+            .register_template("test", r##"{{line 80 "LEFT" "RIGHT"}}"##)
+            .unwrap();
 
         let result = engine.render("test").unwrap();
         assert!(result.contains("LEFT"));
@@ -666,7 +788,9 @@ mod tests {
         let mut engine = TemplateEngine::new().unwrap();
 
         // Test bold with simplified syntax
-        engine.register_template("test_bold", "(bold)Hello World(/bold)").unwrap();
+        engine
+            .register_template("test_bold", "(bold)Hello World(/bold)")
+            .unwrap();
         let result = engine.render("test_bold").unwrap();
         assert!(result.contains("\x1b[1m"));
         assert!(result.contains("Hello World"));
@@ -674,14 +798,18 @@ mod tests {
         println!("Bold test: {:?}", result);
 
         // Test color with simplified syntax
-        engine.register_template("test_color", "(fg #ff0000)Red Text(/fg)").unwrap();
+        engine
+            .register_template("test_color", "(fg #ff0000)Red Text(/fg)")
+            .unwrap();
         let result = engine.render("test_color").unwrap();
         assert!(result.contains("\x1b[38;2;255;0;0m"));
         assert!(result.contains("Red Text"));
         println!("Color test: {:?}", result);
 
         // Test mixed syntax (simplified + handlebars variables)
-        engine.register_template("test_mixed", "(bold)User: {{user}}(/bold)").unwrap();
+        engine
+            .register_template("test_mixed", "(bold)User: {{user}}(/bold)")
+            .unwrap();
         engine.set_value("user", json!("testuser"));
         let result = engine.render("test_mixed").unwrap();
         assert!(result.contains("\x1b[1m"));
@@ -690,7 +818,12 @@ mod tests {
         println!("Mixed test: {:?}", result);
 
         // Test nested styles
-        engine.register_template("test_nested", "(bold)(fg #00ff00)Green Bold(/fg) Still Bold(/bold)").unwrap();
+        engine
+            .register_template(
+                "test_nested",
+                "(bold)(fg #00ff00)Green Bold(/fg) Still Bold(/bold)",
+            )
+            .unwrap();
         let result = engine.render("test_nested").unwrap();
         assert!(result.contains("\x1b[1m"));
         assert!(result.contains("\x1b[38;2;0;255;0m"));
@@ -705,38 +838,50 @@ mod tests {
         let test_path = "~/projects/zush/zuper-shell-prompt/zush-prompt-rust";
 
         // Test "last" mode
-        engine.register_template("path_last", r##"{{format_path pwd "last"}}"##).unwrap();
+        engine
+            .register_template("path_last", r##"{{format_path pwd "last"}}"##)
+            .unwrap();
         engine.set_value("pwd", json!(test_path));
         let result = engine.render("path_last").unwrap();
         assert_eq!(result, "…/zush-prompt-rust");
         println!("Path last: {}", result);
 
         // Test "first:1" mode
-        engine.register_template("path_first1", r##"{{format_path pwd "first:1"}}"##).unwrap();
+        engine
+            .register_template("path_first1", r##"{{format_path pwd "first:1"}}"##)
+            .unwrap();
         let result = engine.render("path_first1").unwrap();
         assert_eq!(result, "~/p/z/z/zush-prompt-rust");
         println!("Path first:1: {}", result);
 
         // Test "first:3" mode
-        engine.register_template("path_first3", r##"{{format_path pwd "first:3"}}"##).unwrap();
+        engine
+            .register_template("path_first3", r##"{{format_path pwd "first:3"}}"##)
+            .unwrap();
         let result = engine.render("path_first3").unwrap();
         assert_eq!(result, "~/pro/zus/zup/zush-prompt-rust");
         println!("Path first:3: {}", result);
 
         // Test "depth:2" mode
-        engine.register_template("path_depth2", r##"{{format_path pwd "depth:2"}}"##).unwrap();
+        engine
+            .register_template("path_depth2", r##"{{format_path pwd "depth:2"}}"##)
+            .unwrap();
         let result = engine.render("path_depth2").unwrap();
         assert_eq!(result, "~/zuper-shell-prompt/zush-prompt-rust");
         println!("Path depth:2: {}", result);
 
         // Test "ellipsis" mode
-        engine.register_template("path_ellipsis", r##"{{format_path pwd "ellipsis"}}"##).unwrap();
+        engine
+            .register_template("path_ellipsis", r##"{{format_path pwd "ellipsis"}}"##)
+            .unwrap();
         let result = engine.render("path_ellipsis").unwrap();
         assert_eq!(result, "~/…/zush-prompt-rust");
         println!("Path ellipsis: {}", result);
 
         // Test "full" mode (default)
-        engine.register_template("path_full", r##"{{format_path pwd "full"}}"##).unwrap();
+        engine
+            .register_template("path_full", r##"{{format_path pwd "full"}}"##)
+            .unwrap();
         let result = engine.render("path_full").unwrap();
         assert_eq!(result, test_path);
         println!("Path full: {}", result);
@@ -744,7 +889,9 @@ mod tests {
         // Test short path
         let short_path = "~/documents";
         engine.set_value("pwd", json!(short_path));
-        engine.register_template("path_short_last", r##"{{format_path pwd "last"}}"##).unwrap();
+        engine
+            .register_template("path_short_last", r##"{{format_path pwd "last"}}"##)
+            .unwrap();
         let result = engine.render("path_short_last").unwrap();
         assert_eq!(result, "…/documents");
         println!("Short path last: {}", result);

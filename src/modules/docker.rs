@@ -29,11 +29,11 @@ impl DockerModule {
     /// Check if we're in a Docker project
     fn is_docker_project(&self, context: &ModuleContext) -> bool {
         // Check for Docker files
-        context.fs.has_file("Dockerfile") ||
-        context.fs.has_file("docker-compose.yml") ||
-        context.fs.has_file("docker-compose.yaml") ||
-        context.fs.has_file(".dockerignore") ||
-        context.fs.has_dir(".devcontainer")
+        context.fs.has_file("Dockerfile")
+            || context.fs.has_file("docker-compose.yml")
+            || context.fs.has_file("docker-compose.yaml")
+            || context.fs.has_file(".dockerignore")
+            || context.fs.has_dir(".devcontainer")
     }
 
     /// Get Docker context (if requested and available)
@@ -121,10 +121,7 @@ impl Module for DockerModule {
     }
 
     fn metadata(&self) -> ModuleMetadata {
-        ModuleMetadata::new(
-            "Docker",
-            "Docker project and context detection"
-        )
+        ModuleMetadata::new("Docker", "Docker project and context detection")
     }
 
     fn enabled_by_default(&self) -> bool {
@@ -135,10 +132,10 @@ impl Module for DockerModule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use std::path::PathBuf;
     use crate::modules::SandboxedFs;
+    use std::collections::HashMap;
     use std::fs;
+    use std::path::PathBuf;
     use tempfile::TempDir;
 
     #[test]

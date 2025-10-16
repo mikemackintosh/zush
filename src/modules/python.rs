@@ -30,14 +30,14 @@ impl PythonModule {
     /// Check if we're in a Python project
     fn is_python_project(&self, context: &ModuleContext) -> bool {
         // Check for common Python files
-        context.fs.has_file("pyproject.toml") ||
-        context.fs.has_file("requirements.txt") ||
-        context.fs.has_file("setup.py") ||
-        context.fs.has_file("Pipfile") ||
-        context.fs.has_file(".python-version") ||
-        context.fs.has_file("poetry.lock") ||
-        context.fs.has_dir(".venv") ||
-        context.fs.has_dir("venv")
+        context.fs.has_file("pyproject.toml")
+            || context.fs.has_file("requirements.txt")
+            || context.fs.has_file("setup.py")
+            || context.fs.has_file("Pipfile")
+            || context.fs.has_file(".python-version")
+            || context.fs.has_file("poetry.lock")
+            || context.fs.has_dir(".venv")
+            || context.fs.has_dir("venv")
     }
 
     /// Get virtual environment name
@@ -67,10 +67,7 @@ impl PythonModule {
             .and_then(|output| {
                 let version = String::from_utf8_lossy(&output.stdout);
                 // Extract version number (e.g., "Python 3.11.5" -> "3.11.5")
-                version
-                    .split_whitespace()
-                    .nth(1)
-                    .map(|v| v.to_string())
+                version.split_whitespace().nth(1).map(|v| v.to_string())
             })
     }
 }
@@ -111,10 +108,7 @@ impl Module for PythonModule {
     }
 
     fn metadata(&self) -> ModuleMetadata {
-        ModuleMetadata::new(
-            "Python",
-            "Python virtual environment and project detection"
-        )
+        ModuleMetadata::new("Python", "Python virtual environment and project detection")
     }
 
     fn enabled_by_default(&self) -> bool {
@@ -125,16 +119,19 @@ impl Module for PythonModule {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::modules::SandboxedFs;
     use std::collections::HashMap;
     use std::path::PathBuf;
-    use crate::modules::SandboxedFs;
 
     #[test]
     fn test_python_module_venv_detection() {
         let module = PythonModule::new();
 
         let mut env = HashMap::new();
-        env.insert("VIRTUAL_ENV".to_string(), "/home/user/project/.venv".to_string());
+        env.insert(
+            "VIRTUAL_ENV".to_string(),
+            "/home/user/project/.venv".to_string(),
+        );
 
         let context = ModuleContext {
             pwd: PathBuf::from("/home/user/project"),
@@ -151,7 +148,10 @@ mod tests {
         let module = PythonModule::new();
 
         let mut env = HashMap::new();
-        env.insert("VIRTUAL_ENV".to_string(), "/home/user/project/myenv".to_string());
+        env.insert(
+            "VIRTUAL_ENV".to_string(),
+            "/home/user/project/myenv".to_string(),
+        );
 
         let context = ModuleContext {
             pwd: PathBuf::from("/home/user/project"),

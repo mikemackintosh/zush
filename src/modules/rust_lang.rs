@@ -29,10 +29,10 @@ impl RustModule {
     /// Check if we're in a Rust project
     fn is_rust_project(&self, context: &ModuleContext) -> bool {
         // Check for Rust project files
-        context.fs.has_file("Cargo.toml") ||
-        context.fs.has_file("Cargo.lock") ||
-        context.fs.has_file("rust-toolchain") ||
-        context.fs.has_file("rust-toolchain.toml")
+        context.fs.has_file("Cargo.toml")
+            || context.fs.has_file("Cargo.lock")
+            || context.fs.has_file("rust-toolchain")
+            || context.fs.has_file("rust-toolchain.toml")
     }
 
     /// Get Rust version (if requested)
@@ -49,10 +49,7 @@ impl RustModule {
             .and_then(|output| {
                 let version = String::from_utf8_lossy(&output.stdout);
                 // Extract version (e.g., "rustc 1.73.0 (abc123 2023-10-01)" -> "1.73.0")
-                version
-                    .split_whitespace()
-                    .nth(1)
-                    .map(|v| v.to_string())
+                version.split_whitespace().nth(1).map(|v| v.to_string())
             })
     }
 
@@ -130,10 +127,7 @@ impl Module for RustModule {
     }
 
     fn metadata(&self) -> ModuleMetadata {
-        ModuleMetadata::new(
-            "Rust",
-            "Rust/Cargo project detection"
-        )
+        ModuleMetadata::new("Rust", "Rust/Cargo project detection")
     }
 
     fn enabled_by_default(&self) -> bool {
@@ -144,20 +138,24 @@ impl Module for RustModule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use std::path::PathBuf;
     use crate::modules::SandboxedFs;
+    use std::collections::HashMap;
     use std::fs;
+    use std::path::PathBuf;
     use tempfile::TempDir;
 
     #[test]
     fn test_rust_module_detection() {
         let temp_dir = TempDir::new().unwrap();
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        fs::write(&cargo_toml, r#"[package]
+        fs::write(
+            &cargo_toml,
+            r#"[package]
 name = "test-crate"
 version = "0.1.0"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let module = RustModule::new();
         let context = ModuleContext {
@@ -174,10 +172,14 @@ version = "0.1.0"
     fn test_rust_module_package_name() {
         let temp_dir = TempDir::new().unwrap();
         let cargo_toml = temp_dir.path().join("Cargo.toml");
-        fs::write(&cargo_toml, r#"[package]
+        fs::write(
+            &cargo_toml,
+            r#"[package]
 name = "my-awesome-crate"
 version = "1.0.0"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let module = RustModule::new();
         let context = ModuleContext {
