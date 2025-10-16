@@ -29,10 +29,10 @@ impl NodeModule {
     /// Check if we're in a Node.js project
     fn is_node_project(&self, context: &ModuleContext) -> bool {
         // Check for common Node.js files
-        context.fs.has_file("package.json") ||
-        context.fs.has_file(".nvmrc") ||
-        context.fs.has_file(".node-version") ||
-        context.fs.has_dir("node_modules")
+        context.fs.has_file("package.json")
+            || context.fs.has_file(".nvmrc")
+            || context.fs.has_file(".node-version")
+            || context.fs.has_dir("node_modules")
     }
 
     /// Get Node.js version (if requested)
@@ -113,10 +113,7 @@ impl Module for NodeModule {
     }
 
     fn metadata(&self) -> ModuleMetadata {
-        ModuleMetadata::new(
-            "Node.js",
-            "Node.js project detection"
-        )
+        ModuleMetadata::new("Node.js", "Node.js project detection")
     }
 
     fn enabled_by_default(&self) -> bool {
@@ -127,10 +124,10 @@ impl Module for NodeModule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use std::path::PathBuf;
     use crate::modules::SandboxedFs;
+    use std::collections::HashMap;
     use std::fs;
+    use std::path::PathBuf;
     use tempfile::TempDir;
 
     #[test]

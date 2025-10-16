@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use std::collections::HashMap;
 
 /// Preprocessor for simplified template syntax
@@ -117,17 +117,18 @@ impl TemplatePreprocessor {
 
         while i < chars.len() {
             // Look for {{segment
-            if i + 9 < chars.len() &&
-               chars[i..i+2] == ['{', '{'] &&
-               chars[i+2..i+9].iter().collect::<String>() == "segment" {
-
+            if i + 9 < chars.len()
+                && chars[i..i + 2] == ['{', '{']
+                && chars[i + 2..i + 9].iter().collect::<String>() == "segment"
+            {
                 // Parse segment definition
                 let seg_start = i;
                 i += 9; // Skip "{{segment"
 
                 // Find the end of opening tag }}
                 let mut tag_end = i;
-                while tag_end < chars.len() && !(chars[tag_end] == '}' && chars[tag_end+1] == '}') {
+                while tag_end < chars.len() && !(chars[tag_end] == '}' && chars[tag_end + 1] == '}')
+                {
                     tag_end += 1;
                 }
 
@@ -146,16 +147,24 @@ impl TemplatePreprocessor {
                 let mut depth = 1;
 
                 while content_end < chars.len() && depth > 0 {
-                    if content_end + 13 < chars.len() &&
-                       chars[content_end..content_end+2] == ['{', '{'] &&
-                       chars[content_end+2..content_end+12].iter().collect::<String>() == "endsegment" {
+                    if content_end + 13 < chars.len()
+                        && chars[content_end..content_end + 2] == ['{', '{']
+                        && chars[content_end + 2..content_end + 12]
+                            .iter()
+                            .collect::<String>()
+                            == "endsegment"
+                    {
                         depth -= 1;
                         if depth == 0 {
                             break;
                         }
-                    } else if content_end + 9 < chars.len() &&
-                              chars[content_end..content_end+2] == ['{', '{'] &&
-                              chars[content_end+2..content_end+9].iter().collect::<String>() == "segment" {
+                    } else if content_end + 9 < chars.len()
+                        && chars[content_end..content_end + 2] == ['{', '{']
+                        && chars[content_end + 2..content_end + 9]
+                            .iter()
+                            .collect::<String>()
+                            == "segment"
+                    {
                         depth += 1;
                     }
                     content_end += 1;
@@ -189,9 +198,13 @@ impl TemplatePreprocessor {
         let params = params.trim();
 
         // Extract name (first quoted string)
-        let name_start = params.find('"').ok_or_else(|| anyhow::anyhow!("Segment must have a name in quotes"))?;
-        let name_end = params[name_start+1..].find('"').ok_or_else(|| anyhow::anyhow!("Unclosed segment name quote"))?;
-        let name = params[name_start+1..name_start+1+name_end].to_string();
+        let name_start = params
+            .find('"')
+            .ok_or_else(|| anyhow::anyhow!("Segment must have a name in quotes"))?;
+        let name_end = params[name_start + 1..]
+            .find('"')
+            .ok_or_else(|| anyhow::anyhow!("Unclosed segment name quote"))?;
+        let name = params[name_start + 1..name_start + 1 + name_end].to_string();
 
         // Extract other parameters (all optional)
         let bg = self.extract_param(params, "bg=").ok();
@@ -211,12 +224,21 @@ impl TemplatePreprocessor {
 
     /// Extract a parameter value from the params string
     fn extract_param(&self, params: &str, key: &str) -> Result<String> {
-        let key_pos = params.find(key).ok_or_else(|| anyhow::anyhow!("Missing required parameter: {}", key))?;
+        let key_pos = params
+            .find(key)
+            .ok_or_else(|| anyhow::anyhow!("Missing required parameter: {}", key))?;
         let value_start = key_pos + key.len();
-        let start_quote = params[value_start..].find('"').ok_or_else(|| anyhow::anyhow!("Parameter {} must be quoted", key))?;
-        let end_quote = params[value_start+start_quote+1..].find('"').ok_or_else(|| anyhow::anyhow!("Unclosed quote for parameter {}", key))?;
+        let start_quote = params[value_start..]
+            .find('"')
+            .ok_or_else(|| anyhow::anyhow!("Parameter {} must be quoted", key))?;
+        let end_quote = params[value_start + start_quote + 1..]
+            .find('"')
+            .ok_or_else(|| anyhow::anyhow!("Unclosed quote for parameter {}", key))?;
 
-        Ok(params[value_start+start_quote+1..value_start+start_quote+1+end_quote].to_string())
+        Ok(
+            params[value_start + start_quote + 1..value_start + start_quote + 1 + end_quote]
+                .to_string(),
+        )
     }
 
     /// Expand {{seg:name}} references with segment content
@@ -227,10 +249,10 @@ impl TemplatePreprocessor {
 
         while i < chars.len() {
             // Look for {{seg:
-            if i + 6 < chars.len() &&
-               chars[i..i+2] == ['{', '{'] &&
-               chars[i+2..i+6] == ['s', 'e', 'g', ':'] {
-
+            if i + 6 < chars.len()
+                && chars[i..i + 2] == ['{', '{']
+                && chars[i + 2..i + 6] == ['s', 'e', 'g', ':']
+            {
                 i += 6; // Skip "{{seg:"
 
                 // Extract segment name
@@ -239,7 +261,11 @@ impl TemplatePreprocessor {
                     i += 1;
                 }
 
-                if i >= chars.len() || i+1 >= chars.len() || chars[i] != '}' || chars[i+1] != '}' {
+                if i >= chars.len()
+                    || i + 1 >= chars.len()
+                    || chars[i] != '}'
+                    || chars[i + 1] != '}'
+                {
                     bail!("Unclosed {{{{seg:name}}}} reference");
                 }
 
@@ -319,7 +345,10 @@ impl TemplatePreprocessor {
             "slant" => "@slant_right",
             "flame" => "@flame_right",
             "none" => "",
-            _ => bail!("Unknown separator shape: {}. Use: sharp, pill, slant, flame, none", shape),
+            _ => bail!(
+                "Unknown separator shape: {}. Use: sharp, pill, slant, flame, none",
+                shape
+            ),
         };
         Ok(symbol.to_string())
     }
@@ -486,7 +515,20 @@ impl TemplatePreprocessor {
         }
 
         // Only accept valid style names and symbol tag
-        let valid_styles = ["bold", "b", "em", "i", "d", "u", "dim", "italic", "underline", "fg", "bg", "sym"];
+        let valid_styles = [
+            "bold",
+            "b",
+            "em",
+            "i",
+            "d",
+            "u",
+            "dim",
+            "italic",
+            "underline",
+            "fg",
+            "bg",
+            "sym",
+        ];
         if !valid_styles.contains(&name.as_str()) {
             return Ok(None);
         }
@@ -514,7 +556,11 @@ impl TemplatePreprocessor {
 
         let tag = StyleTag {
             name,
-            args: if args.is_empty() { None } else { Some(args.trim().to_string()) },
+            args: if args.is_empty() {
+                None
+            } else {
+                Some(args.trim().to_string())
+            },
             is_closing,
         };
 
@@ -535,7 +581,7 @@ impl TemplatePreprocessor {
                 } else {
                     bail!("fg tag requires color argument")
                 }
-            },
+            }
             "bg" => {
                 if let Some(ref args) = tag.args {
                     let color = self.resolve_color(args)?;
@@ -543,14 +589,14 @@ impl TemplatePreprocessor {
                 } else {
                     bail!("bg tag requires color argument")
                 }
-            },
+            }
             "sym" => {
                 if let Some(ref args) = tag.args {
                     Self::resolve_symbol(args)
                 } else {
                     bail!("sym tag requires symbol name argument")
                 }
-            },
+            }
             _ => bail!("Unknown style tag: {}", tag.name),
         }
     }
@@ -558,13 +604,13 @@ impl TemplatePreprocessor {
     /// Get the closing ANSI code for a style
     fn get_closing_code(name: &str) -> Result<String> {
         match name {
-            "bold" | "b" => Ok("\x1b[22m".to_string()),      // Reset bold/dim
-            "dim" | "d" => Ok("\x1b[22m".to_string()),       // Reset bold/dim
-            "italic" | "em" | "i" => Ok("\x1b[23m".to_string()),    // Reset italic
+            "bold" | "b" => Ok("\x1b[22m".to_string()), // Reset bold/dim
+            "dim" | "d" => Ok("\x1b[22m".to_string()),  // Reset bold/dim
+            "italic" | "em" | "i" => Ok("\x1b[23m".to_string()), // Reset italic
             "underline" | "u" => Ok("\x1b[24m".to_string()), // Reset underline
-            "fg" => Ok("\x1b[39m".to_string()),        // Reset foreground
-            "bg" => Ok("\x1b[49m".to_string()),        // Reset background
-            "sym" => Ok("".to_string()),               // Symbols don't need closing
+            "fg" => Ok("\x1b[39m".to_string()),         // Reset foreground
+            "bg" => Ok("\x1b[49m".to_string()),         // Reset background
+            "sym" => Ok("".to_string()),                // Symbols don't need closing
             _ => bail!("Unknown style tag: {}", name),
         }
     }
@@ -607,110 +653,112 @@ impl TemplatePreprocessor {
     fn resolve_symbol(symbol_name: &str) -> Result<String> {
         let symbol = match symbol_name.trim() {
             // Powerline triangles (solid arrows)
-            "triangle_right" | "tri_right" | "arrow_right" => "\u{e0b0}",  //
-            "triangle_left" | "tri_left" | "arrow_left" => "\u{e0b2}",     //
+            "triangle_right" | "tri_right" | "arrow_right" => "\u{e0b0}", //
+            "triangle_left" | "tri_left" | "arrow_left" => "\u{e0b2}",    //
 
             "inverted_triangle_left" | "inv_tri_right" | "inv_arrow_right" => "\u{e0d7}", //
             "inverted_triangle_right" | "inv_tri_left" | "inv_arrow_left" => "\u{e0d6}",  //
-            
+
             // Powerline pills/rounded (flame-like)
-            "pill_left" | "round_left" => "\u{e0b6}",       //
-            "pill_right" | "round_right" => "\u{e0b4}",    //
+            "pill_left" | "round_left" => "\u{e0b6}",   //
+            "pill_right" | "round_right" => "\u{e0b4}", //
 
             // Flame
-            "flame_left" => "\u{e0c0}",                                      //
-            "flame_right" => "\u{e0c2}",                                     //
+            "flame_left" => "\u{e0c0}",  //
+            "flame_right" => "\u{e0c2}", //
 
             // Trapezoid shapes
-            "trapezoid_right" => "\u{e0d2}",                                //
-            "trapezoid_left" => "\u{e0d4}",                                 //
-
+            "trapezoid_right" => "\u{e0d2}", //
+            "trapezoid_left" => "\u{e0d4}",  //
 
             // Powerline angles (thin arrows)
-            "angle_right" | "thin_right" => "\u{e0b1}",                    //
-            "angle_left" | "thin_left" => "\u{e0b3}",                      //
+            "angle_right" | "thin_right" => "\u{e0b1}", //
+            "angle_left" | "thin_left" => "\u{e0b3}",   //
 
             // Powerline thin pills/rounded
-            "pill_right_thin" | "round_right_thin" => "\u{e0b5}",          //
-            "pill_left_thin" | "round_left_thin" => "\u{e0b7}",            //
+            "pill_right_thin" | "round_right_thin" => "\u{e0b5}", //
+            "pill_left_thin" | "round_left_thin" => "\u{e0b7}",   //
 
             // Powerline circles (semi-circles)
-            "circle_right" | "semicircle_right" => "\u{e0b8}",             //
-            "circle_left" | "semicircle_left" => "\u{e0ba}",               //
+            "circle_right" | "semicircle_right" => "\u{e0b8}", //
+            "circle_left" | "semicircle_left" => "\u{e0ba}",   //
 
             // Powerline slants/diagonal
-            "slant_right" | "diagonal_right" => "\u{e0bc}",                //
-            "slant_left" | "diagonal_left" => "\u{e0be}",                  //
+            "slant_right" | "diagonal_right" => "\u{e0bc}", //
+            "slant_left" | "diagonal_left" => "\u{e0be}",   //
 
             // Misc shapes
-            "ice_cream" => "\u{f0efd}",                                    // Ice Cream (fun)
-            "ice_cream_thick" => "\u{ef888}",                              // Custom glyph
-            "ice_cream_outline" => "\u{f082a}",                            // Ice Cream Outline (fun)
+            "ice_cream" => "\u{f0efd}",         // Ice Cream (fun)
+            "ice_cream_thick" => "\u{ef888}",   // Custom glyph
+            "ice_cream_outline" => "\u{f082a}", // Ice Cream Outline (fun)
 
             // Slash
-            "backslash" | "backslash" => "\u{e216}",                       //
+            "backslash" | "backslash" => "\u{e216}", //
 
             // Additional powerline shapes
-            "lower_triangle_right" => "\u{e0b8}",                          //
-            "lower_triangle_left" => "\u{e0ba}",                           //
-            "upper_triangle_right" => "\u{e0bc}",                          //
-            "upper_triangle_left" => "\u{e0be}",                           //
+            "lower_triangle_right" => "\u{e0b8}", //
+            "lower_triangle_left" => "\u{e0ba}",  //
+            "upper_triangle_right" => "\u{e0bc}", //
+            "upper_triangle_left" => "\u{e0be}",  //
 
             // Common nerd font icons
-            "git_branch" | "branch" => "\u{e0a0}",                         //
-            "lock" => "\u{e0a2}",                                          //
-            "cog" | "gear" => "\u{e615}",                                  //
-            "home" => "\u{f015}",                                          //
-            "folder" => "\u{f07c}",                                        //
-            "folder_open" => "\u{f07b}",                                   //
+            "git_branch" | "branch" => "\u{e0a0}", //
+            "lock" => "\u{e0a2}",                  //
+            "cog" | "gear" => "\u{e615}",          //
+            "home" => "\u{f015}",                  //
+            "folder" => "\u{f07c}",                //
+            "folder_open" => "\u{f07b}",           //
 
             // Extras
-            "timer" => "\u{f0109}",                                       //
-            "heart" => "\u{f004}",                                        //
-            "star" => "\u{f005}",                                         //
-            "check" => "\u{f00c}",                                        //
-            "cross" | "x" => "\u{f00d}",                                  //
-            "info" => "\u{f129}",                                         //
-            "warning" => "\u{f071}",                                      //
-            "question" => "\u{f128}",                                     //
-            "clock" => "\u{f017}",                                       //
-            "calendar" => "\u{f133}",                                     //
-            "mail" | "envelope" => "\u{f0e0}",                               //
-            "phone" => "\u{f095}",                                        //
-            "music" => "\u{f001}",                                        //
-            "camera" => "\u{f030}",                                       //
-            "search" | "magnifying_glass" => "\u{f002}",                     //
-            "trash" | "trash_can" => "\u{f1f8}",                             //
-            "battery_full" => "\u{f240}",                                 //
-            "battery_half" => "\u{f242}",                                 //
-            "battery_low" => "\u{f243}",                                  //
-            "wifi" => "\u{f1eb}",                                        //
-            "plug" => "\u{f1e6}",                                        //
-            "cloud" => "\u{f0c2}",                                       //
-            "sun" => "\u{f185}",                                         //
-            "moon" => "\u{f186}",                                        //
-            "fire" => "\u{f06d}",                                        //
-            "bug" => "\u{f188}",                                         //
-            "code" => "\u{f121}",                                        //
-            "terminal" => "\u{f120}",                                    //
-            "keyboard" => "\u{f11c}",                                    //
-            "laptop" => "\u{f109}",                                      //
-            "desktop" => "\u{f108}",                                     //
-            "server" => "\u{f233}",                                      //
-            "computer" => "\u{f4b3}",                                    //
-            "rocket" => "\u{f135}",                                      //
-            "shield" => "\u{f3ed}",                                      //
-            "terminal_power" => "\u{f489}",                              //
-            "terminal_fire" => "\u{f489}",                               //
-            "terminal_bolt" => "\u{f489}",                               //
-            "terminal_flame" => "\u{f489}",                              // "terminal_lightning" => "\u{f489}",                          //
-            "lightning" => "\u{f0e7}",                                   //
-            "zap" => "\u{f0e7}",                                        // "flash" => "\u{f0e7}",                                     //
-            "insect" => "\u{f188}",                                     //
-            "leaf" => "\u{f06c}",                                       //
-            "paw" => "\u{f1b0}",                                       //
+            "timer" => "\u{f0109}",                      //
+            "heart" => "\u{f004}",                       //
+            "star" => "\u{f005}",                        //
+            "check" => "\u{f00c}",                       //
+            "cross" | "x" => "\u{f00d}",                 //
+            "info" => "\u{f129}",                        //
+            "warning" => "\u{f071}",                     //
+            "question" => "\u{f128}",                    //
+            "clock" => "\u{f017}",                       //
+            "calendar" => "\u{f133}",                    //
+            "mail" | "envelope" => "\u{f0e0}",           //
+            "phone" => "\u{f095}",                       //
+            "music" => "\u{f001}",                       //
+            "camera" => "\u{f030}",                      //
+            "search" | "magnifying_glass" => "\u{f002}", //
+            "trash" | "trash_can" => "\u{f1f8}",         //
+            "battery_full" => "\u{f240}",                //
+            "battery_half" => "\u{f242}",                //
+            "battery_low" => "\u{f243}",                 //
+            "wifi" => "\u{f1eb}",                        //
+            "plug" => "\u{f1e6}",                        //
+            "cloud" => "\u{f0c2}",                       //
+            "sun" => "\u{f185}",                         //
+            "moon" => "\u{f186}",                        //
+            "fire" => "\u{f06d}",                        //
+            "bug" => "\u{f188}",                         //
+            "code" => "\u{f121}",                        //
+            "terminal" => "\u{f120}",                    //
+            "keyboard" => "\u{f11c}",                    //
+            "laptop" => "\u{f109}",                      //
+            "desktop" => "\u{f108}",                     //
+            "server" => "\u{f233}",                      //
+            "computer" => "\u{f4b3}",                    //
+            "rocket" => "\u{f135}",                      //
+            "shield" => "\u{f3ed}",                      //
+            "terminal_power" => "\u{f489}",              //
+            "terminal_fire" => "\u{f489}",               //
+            "terminal_bolt" => "\u{f489}",               //
+            "terminal_flame" => "\u{f489}", // "terminal_lightning" => "\u{f489}",                          //
+            "lightning" => "\u{f0e7}",      //
+            "zap" => "\u{f0e7}", // "flash" => "\u{f0e7}",                                     //
+            "insect" => "\u{f188}", //
+            "leaf" => "\u{f06c}", //
+            "paw" => "\u{f1b0}", //
 
-            _ => bail!("Unknown symbol name: {}. See documentation for available symbols.", symbol_name),
+            _ => bail!(
+                "Unknown symbol name: {}. See documentation for available symbols.",
+                symbol_name
+            ),
         };
 
         Ok(symbol.to_string())
@@ -749,7 +797,7 @@ mod tests {
         assert!(result.contains("\x1b[22m"));
         assert!(result.contains("Hello"));
         println!("Bold result: {:?}", result);
-    }    
+    }
 
     #[test]
     fn test_fg_hex_color() {
@@ -868,7 +916,10 @@ mod test_adjacent_tags {
         let output = result.unwrap();
         // Should have bold code AND background code
         assert!(output.contains("\x1b[1m"), "Should contain bold code");
-        assert!(output.contains("\x1b[48;2;255;0;0m"), "Should contain bg code");
+        assert!(
+            output.contains("\x1b[48;2;255;0;0m"),
+            "Should contain bg code"
+        );
         println!("Test passed!");
     }
 }

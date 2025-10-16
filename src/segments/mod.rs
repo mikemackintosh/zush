@@ -1,7 +1,7 @@
-use std::process::Command;
-use std::env;
-use git2::Repository;
 use chrono::Local;
+use git2::Repository;
+use std::env;
+use std::process::Command;
 use sysinfo::System;
 
 /// Segment data collectors for the prompt
@@ -142,14 +142,12 @@ impl Segments {
 
     /// Get virtual environment name
     pub fn virtual_env() -> Option<String> {
-        env::var("VIRTUAL_ENV")
-            .ok()
-            .and_then(|path| {
-                std::path::Path::new(&path)
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .map(String::from)
-            })
+        env::var("VIRTUAL_ENV").ok().and_then(|path| {
+            std::path::Path::new(&path)
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(String::from)
+        })
     }
 
     /// Get Node.js version
@@ -184,10 +182,10 @@ impl Segments {
 
     /// Check if in a container (Docker, etc.)
     pub fn is_container() -> bool {
-        std::path::Path::new("/.dockerenv").exists() ||
-        std::fs::read_to_string("/proc/1/cgroup")
-            .map(|content| content.contains("docker") || content.contains("lxc"))
-            .unwrap_or(false)
+        std::path::Path::new("/.dockerenv").exists()
+            || std::fs::read_to_string("/proc/1/cgroup")
+                .map(|content| content.contains("docker") || content.contains("lxc"))
+                .unwrap_or(false)
     }
 
     /// Get Kubernetes context
@@ -220,8 +218,13 @@ pub struct GitStatus {
 
 impl GitStatus {
     pub fn is_dirty(&self) -> bool {
-        self.modified > 0 || self.staged > 0 || self.untracked > 0 ||
-        self.added > 0 || self.deleted > 0 || self.renamed > 0 || self.conflicted > 0
+        self.modified > 0
+            || self.staged > 0
+            || self.untracked > 0
+            || self.added > 0
+            || self.deleted > 0
+            || self.renamed > 0
+            || self.conflicted > 0
     }
 
     pub fn format_short(&self) -> String {

@@ -1,8 +1,8 @@
+use anyhow::{Context, Result};
 use std::io::{self, Write};
-use terminal_size::{Width, Height, terminal_size};
-use unicode_width::UnicodeWidthStr;
+use terminal_size::{terminal_size, Height, Width};
 use unicode_segmentation::UnicodeSegmentation;
-use anyhow::{Result, Context};
+use unicode_width::UnicodeWidthStr;
 
 /// Represents a position in the terminal
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,8 +33,8 @@ pub struct TerminalBuffer {
 impl TerminalBuffer {
     /// Create a new terminal buffer
     pub fn new() -> Result<Self> {
-        let (Width(width), Height(height)) = terminal_size()
-            .context("Failed to get terminal size")?;
+        let (Width(width), Height(height)) =
+            terminal_size().context("Failed to get terminal size")?;
 
         Ok(Self {
             width,
@@ -108,7 +108,13 @@ impl TerminalBuffer {
     }
 
     /// Write aligned text on a specific row
-    pub fn write_aligned(&mut self, row: u16, text: &str, alignment: Alignment, style: Option<&str>) -> Result<()> {
+    pub fn write_aligned(
+        &mut self,
+        row: u16,
+        text: &str,
+        alignment: Alignment,
+        style: Option<&str>,
+    ) -> Result<()> {
         let text_width = UnicodeWidthStr::width(text);
 
         let col = match alignment {
@@ -153,7 +159,10 @@ impl TerminalBuffer {
             let center_pos = center_pos.max(left_width + 1);
 
             self.write_at(
-                Position { row, col: center_pos as u16 },
+                Position {
+                    row,
+                    col: center_pos as u16,
+                },
                 center_text,
                 center_style,
             )?;
@@ -172,7 +181,10 @@ impl TerminalBuffer {
             };
 
             self.write_at(
-                Position { row, col: min_right_pos.max(left_width + 1) as u16 },
+                Position {
+                    row,
+                    col: min_right_pos.max(left_width + 1) as u16,
+                },
                 right_text,
                 right_style,
             )?;
@@ -395,12 +407,36 @@ impl PromptLine {
     pub fn render_to_buffer(&self, buffer: &mut TerminalBuffer, row: u16) -> Result<()> {
         buffer.write_three_sections(
             row,
-            if self.left.is_empty() { None } else { Some(&self.left) },
-            if self.center.is_empty() { None } else { Some(&self.center) },
-            if self.right.is_empty() { None } else { Some(&self.right) },
-            if self.left_style.is_empty() { None } else { Some(&self.left_style) },
-            if self.center_style.is_empty() { None } else { Some(&self.center_style) },
-            if self.right_style.is_empty() { None } else { Some(&self.right_style) },
+            if self.left.is_empty() {
+                None
+            } else {
+                Some(&self.left)
+            },
+            if self.center.is_empty() {
+                None
+            } else {
+                Some(&self.center)
+            },
+            if self.right.is_empty() {
+                None
+            } else {
+                Some(&self.right)
+            },
+            if self.left_style.is_empty() {
+                None
+            } else {
+                Some(&self.left_style)
+            },
+            if self.center_style.is_empty() {
+                None
+            } else {
+                Some(&self.center_style)
+            },
+            if self.right_style.is_empty() {
+                None
+            } else {
+                Some(&self.right_style)
+            },
         )
     }
 
@@ -426,7 +462,9 @@ mod tests {
     #[test]
     fn test_write_at() {
         let mut buffer = TerminalBuffer::with_dimensions(80, 24);
-        buffer.write_at(Position { row: 0, col: 0 }, "Hello", None).unwrap();
+        buffer
+            .write_at(Position { row: 0, col: 0 }, "Hello", None)
+            .unwrap();
         let line = buffer.render_line(0);
         assert!(line.contains("Hello"));
     }
@@ -434,15 +472,17 @@ mod tests {
     #[test]
     fn test_three_sections() {
         let mut buffer = TerminalBuffer::with_dimensions(80, 1);
-        buffer.write_three_sections(
-            0,
-            Some("Left"),
-            Some("Center"),
-            Some("Right"),
-            None,
-            None,
-            None,
-        ).unwrap();
+        buffer
+            .write_three_sections(
+                0,
+                Some("Left"),
+                Some("Center"),
+                Some("Right"),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
         let line = buffer.render_line(0);
         assert!(line.contains("Left"));

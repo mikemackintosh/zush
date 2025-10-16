@@ -1,15 +1,15 @@
 // Module system for Zush prompt
 // Provides a safe, sandboxed API for context-aware prompt modules
 
+use anyhow::Result;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use anyhow::Result;
 
-pub mod python;
-pub mod node;
-pub mod rust_lang;
 pub mod docker;
+pub mod node;
+pub mod python;
 pub mod registry;
+pub mod rust_lang;
 
 /// Module trait - implemented by all prompt modules
 pub trait Module: Send + Sync {
@@ -58,12 +58,7 @@ impl ModuleContext {
         // Create sandboxed filesystem with allowed paths
         let fs = SandboxedFs::new(vec![pwd.clone(), home.clone()]);
 
-        Ok(Self {
-            pwd,
-            home,
-            env,
-            fs,
-        })
+        Ok(Self { pwd, home, env, fs })
     }
 
     /// Check if an environment variable exists
@@ -148,9 +143,9 @@ impl SandboxedFs {
         };
 
         // Check if path starts with any allowed path
-        self.allowed_paths.iter().any(|allowed| {
-            abs_path.starts_with(allowed)
-        })
+        self.allowed_paths
+            .iter()
+            .any(|allowed| abs_path.starts_with(allowed))
     }
 }
 

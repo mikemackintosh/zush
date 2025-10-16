@@ -22,26 +22,26 @@ pub struct GitStatus {
 pub fn get_git_status(path: &Path) -> Option<GitStatus> {
     // Try to open repository - this is fast, just checks for .git
     let repo = Repository::discover(path).ok()?;
-    
+
     let mut status = GitStatus::default();
-    
+
     // Get current branch name
     if let Ok(head) = repo.head() {
         if let Some(branch_name) = head.shorthand() {
             status.branch = branch_name.to_string();
         }
     }
-    
+
     // Get status - this reads .git/index directly
     let mut opts = StatusOptions::new();
     opts.show(StatusShow::IndexAndWorkdir);
     opts.include_untracked(true);
     opts.recurse_untracked_dirs(false);
-    
+
     if let Ok(statuses) = repo.statuses(Some(&mut opts)) {
         for entry in statuses.iter() {
             let status_flags = entry.status();
-            
+
             // Index (staged) changes
             if status_flags.is_index_new() {
                 status.added += 1;
@@ -58,7 +58,7 @@ pub fn get_git_status(path: &Path) -> Option<GitStatus> {
                 status.renamed += 1;
                 status.staged += 1;
             }
-            
+
             // Working tree changes
             if status_flags.is_wt_modified() {
                 status.modified += 1;
@@ -66,19 +66,19 @@ pub fn get_git_status(path: &Path) -> Option<GitStatus> {
             if status_flags.is_wt_deleted() {
                 status.deleted += 1;
             }
-            
+
             // Untracked
             if status_flags.is_wt_new() {
                 status.untracked += 1;
             }
-            
+
             // Conflicted
             if status_flags.is_conflicted() {
                 status.conflicted += 1;
             }
         }
     }
-    
+
     Some(status)
 }
 
@@ -100,7 +100,7 @@ pub fn git_status_to_json(status: &GitStatus) -> Value {
 mod tests {
     use super::*;
     use std::env;
-    
+
     #[test]
     fn test_git_status() {
         // Test in current directory (should be a git repo during development)
