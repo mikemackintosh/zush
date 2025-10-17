@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2](https://github.com/mikemackintosh/zush/compare/v1.0.1...v1.0.2) (2025-10-17)
+
+
+### 🐛 Bug Fixes
+
+* **ci:** add contents write permission to release workflow ([d75d672](https://github.com/mikemackintosh/zush/commit/d75d6721d5ff5b15f1080fc915b8acdbbaea7f10))
+* merge permission fix for release workflow ([53d25be](https://github.com/mikemackintosh/zush/commit/53d25be70c54b6fa9c535b8dbfef6ad39441b819))
+
 ## 1.0.0 (2025-10-16)
 
 
