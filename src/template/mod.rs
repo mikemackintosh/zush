@@ -531,9 +531,14 @@ fn format_path_helper(
                 // Showing all segments, keep original path
                 path.to_string()
             } else {
-                // Truncating: use ellipsis to show we're hiding parent directories
+                // Truncating: preserve ~ if present, otherwise use ellipsis
                 let start_idx = segments.len() - n;
-                format!("…/{}", segments[start_idx..].join("/"))
+                let prefix = if segments[0] == "~" {
+                    "~"
+                } else {
+                    "…"
+                };
+                format!("{}/{}", prefix, segments[start_idx..].join("/"))
             }
         }
         "ellipsis" => {
