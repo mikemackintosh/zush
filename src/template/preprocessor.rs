@@ -780,7 +780,7 @@ mod tests {
     #[test]
     fn test_bold_tag() {
         let colors = HashMap::new();
-        let preprocessor = TemplatePreprocessor::new(colors);
+        let mut preprocessor = TemplatePreprocessor::new(colors);
         let input = "(bold)Hello(/bold)";
         let result = preprocessor.preprocess(input).unwrap();
         assert!(result.contains("\x1b[1m"));
@@ -791,8 +791,10 @@ mod tests {
 
     #[test]
     fn test_bold_short_tag() {
+        let colors = HashMap::new();
+        let mut preprocessor = TemplatePreprocessor::new(colors);
         let input = "(b)Hello(/b)";
-        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        let result = preprocessor.preprocess(input).unwrap();
         assert!(result.contains("\x1b[1m"));
         assert!(result.contains("\x1b[22m"));
         assert!(result.contains("Hello"));
@@ -801,8 +803,10 @@ mod tests {
 
     #[test]
     fn test_fg_hex_color() {
+        let colors = HashMap::new();
+        let mut preprocessor = TemplatePreprocessor::new(colors);
         let input = "(fg #ff0000)Red Text(/fg)";
-        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        let result = preprocessor.preprocess(input).unwrap();
         assert!(result.contains("\x1b[38;2;255;0;0m"));
         assert!(result.contains("Red Text"));
         assert!(result.contains("\x1b[39m"));
@@ -811,8 +815,10 @@ mod tests {
 
     #[test]
     fn test_nested_styles() {
+        let colors = HashMap::new();
+        let mut preprocessor = TemplatePreprocessor::new(colors);
         let input = "(bold)(fg #00ff00)Green Bold(/fg) Still Bold(/bold)";
-        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        let result = preprocessor.preprocess(input).unwrap();
         assert!(result.contains("\x1b[1m")); // bold
         assert!(result.contains("\x1b[38;2;0;255;0m")); // green
         assert!(result.contains("Green Bold"));
@@ -822,8 +828,10 @@ mod tests {
 
     #[test]
     fn test_multiple_styles() {
+        let colors = HashMap::new();
+        let mut preprocessor = TemplatePreprocessor::new(colors);
         let input = "(bold)Bold(/bold) (dim)Dim(/dim)";
-        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        let result = preprocessor.preprocess(input).unwrap();
         assert!(result.contains("\x1b[1m"));
         assert!(result.contains("\x1b[2m"));
         println!("Multiple result: {:?}", result);
@@ -831,8 +839,10 @@ mod tests {
 
     #[test]
     fn test_bg_color() {
+        let colors = HashMap::new();
+        let mut preprocessor = TemplatePreprocessor::new(colors);
         let input = "(bg #000000)Black Background(/bg)";
-        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        let result = preprocessor.preprocess(input).unwrap();
         assert!(result.contains("\x1b[48;2;0;0;0m"));
         assert!(result.contains("\x1b[49m"));
         println!("BG result: {:?}", result);
@@ -844,7 +854,9 @@ mod tests {
         // This should fail for now as we don't support comma-separated styles yet
         // Let's test them separately
         let input = "(fg #ffffff)(bg #000000)White on Black(/bg)(/fg)";
-        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        let colors = HashMap::new();
+        let mut preprocessor = TemplatePreprocessor::new(colors);
+        let result = preprocessor.preprocess(input).unwrap();
         assert!(result.contains("\x1b[38;2;255;255;255m"));
         assert!(result.contains("\x1b[48;2;0;0;0m"));
         println!("Combined result: {:?}", result);
@@ -852,21 +864,26 @@ mod tests {
 
     #[test]
     fn test_powerline_symbols() {
+        let colors = HashMap::new();
+
         // Test triangle right (arrow)
         let input = "(sym triangle_right)";
-        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        let mut preprocessor = TemplatePreprocessor::new(colors.clone());
+        let result = preprocessor.preprocess(input).unwrap();
         assert_eq!(result, "\u{e0b0}");
         println!("Triangle right: {:?}", result);
 
         // Test pill left
         let input = "(sym pill_left)";
-        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        let mut preprocessor = TemplatePreprocessor::new(colors.clone());
+        let result = preprocessor.preprocess(input).unwrap();
         assert_eq!(result, "\u{e0b6}");
         println!("Pill left: {:?}", result);
 
         // Test git branch
         let input = "(sym git_branch)";
-        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        let mut preprocessor = TemplatePreprocessor::new(colors.clone());
+        let result = preprocessor.preprocess(input).unwrap();
         assert_eq!(result, "\u{e0a0}");
         println!("Git branch: {:?}", result);
     }
@@ -875,7 +892,9 @@ mod tests {
     fn test_symbols_with_styles() {
         // Symbols should work inline with other styles
         let input = "(fg #ff0000)(sym triangle_right)(/fg) Text";
-        let result = TemplatePreprocessor::preprocess(input).unwrap();
+        let colors = HashMap::new();
+        let mut preprocessor = TemplatePreprocessor::new(colors);
+        let result = preprocessor.preprocess(input).unwrap();
         assert!(result.contains("\x1b[38;2;255;0;0m"));
         assert!(result.contains("\u{e0b0}"));
         assert!(result.contains("\x1b[39m"));
@@ -889,9 +908,14 @@ mod tests {
         let input2 = "(sym tri_right)";
         let input3 = "(sym arrow_right)";
 
-        let result1 = TemplatePreprocessor::preprocess(input1).unwrap();
-        let result2 = TemplatePreprocessor::preprocess(input2).unwrap();
-        let result3 = TemplatePreprocessor::preprocess(input3).unwrap();
+        let colors = HashMap::new();
+        let mut preprocessor1 = TemplatePreprocessor::new(colors.clone());
+        let mut preprocessor2 = TemplatePreprocessor::new(colors.clone());
+        let mut preprocessor3 = TemplatePreprocessor::new(colors.clone());
+
+        let result1 = preprocessor1.preprocess(input1).unwrap();
+        let result2 = preprocessor2.preprocess(input2).unwrap();
+        let result3 = preprocessor3.preprocess(input3).unwrap();
 
         assert_eq!(result1, result2);
         assert_eq!(result2, result3);
@@ -905,8 +929,10 @@ mod test_adjacent_tags {
 
     #[test]
     fn test_adjacent_b_and_bg() {
-        let input = "(b)(bg #ff0000)test";
-        let result = TemplatePreprocessor::preprocess(input);
+        let input = "(b)(bg #ff0000)test(/bg)(/b)";
+        let colors = HashMap::new();
+        let mut preprocessor = TemplatePreprocessor::new(colors);
+        let result = preprocessor.preprocess(input);
         println!("Input: {}", input);
         match &result {
             Ok(r) => println!("Success: {:?}", r),
