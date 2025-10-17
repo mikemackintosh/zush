@@ -533,11 +533,7 @@ fn format_path_helper(
             } else {
                 // Truncating: preserve ~ if present, otherwise use ellipsis
                 let start_idx = segments.len() - n;
-                let prefix = if segments[0] == "~" {
-                    "~"
-                } else {
-                    "…"
-                };
+                let prefix = if segments[0] == "~" { "~" } else { "…" };
                 format!("{}/{}", prefix, segments[start_idx..].join("/"))
             }
         }
