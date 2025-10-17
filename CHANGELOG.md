@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.5](https://github.com/mikemackintosh/zush/compare/v1.0.4...v1.0.5) (2025-10-17)
+
+
+### 🐛 Bug Fixes
+
+* **ci:** split build step to avoid bash syntax on Windows ([436f217](https://github.com/mikemackintosh/zush/commit/436f217e3a2c25e9a66563a39a64d05d78dc6417))
+
 ## [1.0.2](https://github.com/mikemackintosh/zush/compare/v1.0.1...v1.0.2) (2025-10-17)
 
 
