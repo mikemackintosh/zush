@@ -98,24 +98,30 @@ Edit theme files in `~/.config/zush/themes/` to customize colors, symbols, and l
 
 ```toml
 [colors]
-cyan = "#7dcfff"
-green = "#9ece6a"
-red = "#f7768e"
-blue = "#7aa2f7"
+# Powerline segment colors (Nord-inspired)
+bg_user = "#5e81ac"        # Blue
+bg_pwd = "#88c0d0"         # Cyan
+bg_git = "#a3be8c"         # Green
+fg_light = "#eceff4"       # Almost white
+fg_dark = "#2e3440"        # Almost black
+red = "#bf616a"
+green = "#a3be8c"
+cyan = "#88c0d0"
 
 [symbols]
-prompt_arrow = "❯"
-git_branch = ""
+sep = ""                  # Powerline arrow
+git = ""                  # Git icon
+folder = ""               # Folder icon
 
 [templates]
 main = """{{first_line}}
-{{color colors.green symbols.prompt_arrow}} """
+{{#if (eq exit_code 0)}}{{color colors.green "❯"}} {{else}}{{color colors.red "["}}{{exit_code}}{{color colors.red "] ❯"}} {{/if}}"""
 
-left = """{{color colors.blue user}}@{{host}}  {{color colors.magenta pwd_short}}"""
-right = """{{color colors.fg_dim time}}"""
+left = """{{segment colors.bg_user colors.fg_light " "}}{{segment colors.bg_user colors.fg_light user}}{{segment colors.bg_user colors.fg_light "@"}}{{segment colors.bg_user colors.fg_light host}}..."""
 
-transient = """{{color colors.cyan time}}
-{{color colors.green symbols.prompt_arrow}} """
+right = """{{bg colors.bg_time}}{{fg colors.fg_light}}  {{time}} {{reset}}"""
+
+transient = """{{#if (eq exit_code 0)}}{{color colors.green "❯"}} {{else}}{{color colors.red "❯"}} {{/if}}"""
 ```
 
 ### Quick Reference
@@ -130,11 +136,12 @@ transient = """{{color colors.cyan time}}
 
 ## Built-in Themes
 
-- **`split`** (default) - Two-line prompt with left/right aligned content
+- **`split`** (default) - Two-line prompt with left/right aligned content, Nord colors
 - **`minimal`** - Simple single-line prompt
 - **`powerline`** - Powerline-style segments with separators
-- **`dcs`** - Custom DCS theme
-- **`splug`** - Tokyo Night powerline theme
+- **`dcs`** - Oh My Posh-inspired theme with Catppuccin colors
+- **`catppuccin`** - Catppuccin Mocha powerline theme
+- **`starship`** - Starship-inspired minimal prompt with Tokyo Night colors
 
 Switch themes:
 ```bash
@@ -346,6 +353,8 @@ MIT License - See LICENSE file for details
 
 ## Acknowledgments
 
-- Tokyo Night color scheme by Folke Lemaitre
+- Nord color scheme for the default split theme
+- Catppuccin color scheme by the Catppuccin team
+- Tokyo Night color scheme by Folke Lemaitre (starship theme)
 - Nerd Fonts for powerline symbols
 - Inspired by Oh My Posh and Starship
