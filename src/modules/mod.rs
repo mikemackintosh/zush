@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 pub mod docker;
+pub mod go;
 pub mod node;
 pub mod python;
 pub mod registry;

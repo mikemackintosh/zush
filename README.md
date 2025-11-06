@@ -12,7 +12,7 @@
 - **Gradient Text** - Color gradients across any text
 - **Powerful Templates** - Handlebars with simplified syntax
 - **Git Integration** - Automatic status detection with detailed information
-- **Context-Aware Modules** - Python, Node, Rust, Docker detection
+- **Context-Aware Modules** - Python, Node.js, Go, Ruby, Rust, Docker detection
 - **Execution Timing** - Millisecond-precision command tracking
 - **Secure & Sandboxed** - Safe module system with no arbitrary code execution
 
@@ -187,25 +187,165 @@ See **[TEMPLATE_HELPERS.md](TEMPLATE_HELPERS.md)** for complete reference.
 
 ## Module System
 
-Zush includes a secure, context-aware module system that automatically detects development environments:
+Zush includes a secure, context-aware module system that automatically detects development environments and displays relevant information in your prompt.
 
-- **Python** - Detects virtual environments and Python projects
-- **Node.js** - Shows package name from `package.json`
-- **Rust** - Displays Cargo project name
-- **Docker** - Indicates Docker/compose files
+**Core Features:**
+- 🔒 **Sandboxed filesystem access** - Modules can only read allowed paths
+- ⚡ **200ms intelligent caching** - Fast repeated renders
+- 🎯 **Context-aware** - Only appears when relevant to your current directory
+- 🔐 **Secure by design** - No arbitrary code execution, no shell commands in detection logic
 
-**Features:**
-- Sandboxed filesystem access
-- 200ms caching for performance
-- Only appears when relevant
-- No arbitrary code execution
+### Available Modules
 
-Use in templates:
+#### 🐍 Python
+**Detection:**
+- Virtual environment via `$VIRTUAL_ENV`
+- `pyproject.toml`, `requirements.txt`, `setup.py`
+- `Pipfile`, `poetry.lock`
+- `.python-version`
+- `.venv/` or `venv/` directories
+
+**Display:**
+- Shows virtual environment name when active (e.g., `🐍 myenv`)
+- Falls back to "python" if in project but no venv
+- Optional: Display Python version with `show_version`
+
+**Example output:** `🐍 myproject-venv` or `🐍 python v3.11.5`
+
+---
+
+#### ⬢ Node.js
+**Detection:**
+- `package.json`
+- `.nvmrc`, `.node-version`
+- `node_modules/` directory
+
+**Display:**
+- Shows package name from `package.json` (e.g., `⬢ my-app`)
+- Falls back to "node" if no package.json
+- Optional: Display Node.js version with `show_version`
+
+**Example output:** `⬢ express-api` or `⬢ node v18.17.0`
+
+---
+
+#### 🐹 Go
+**Detection:**
+- `go.mod`, `go.sum` (Go modules)
+- `Gopkg.toml`, `Gopkg.lock` (dep)
+- `.go-version`
+- `glide.yaml`
+- **Inside `$GOPATH/src/`** (supports multiple paths with `:` separator)
+
+**Display:**
+- Shows module name from `go.mod` (last path component)
+- Falls back to "go" if no go.mod
+- Optional: Display Go version with `show_version`
+
+**Example output:** `🐹 myapp` or `🐹 cli-tool v1.21.5`
+
+---
+
+#### 💎 Ruby
+**Detection:**
+- `Gemfile`, `Gemfile.lock`
+- `Rakefile`
+- `.ruby-version`, `.ruby-gemset`
+- `config.ru` (Rack apps)
+- `.gemspec` files
+
+**Display:**
+- Shows gem/project name from directory or Gemfile
+- Falls back to "ruby"
+- Shows version by default (disable with `show_version: false`)
+
+**Example output:** `💎 rails-app v3.2.2`
+
+---
+
+#### 🦀 Rust
+**Detection:**
+- `Cargo.toml`, `Cargo.lock`
+- `rust-toolchain`, `rust-toolchain.toml`
+
+**Display:**
+- Shows package name from `Cargo.toml` `[package]` section
+- Falls back to "rust" if no Cargo.toml
+- Optional: Display rustc version with `show_version`
+
+**Example output:** `🦀 zush-prompt` or `🦀 my-crate v1.73.0`
+
+---
+
+#### 🐳 Docker
+**Detection:**
+- `Dockerfile`
+- `docker-compose.yml`, `docker-compose.yaml`
+- `.dockerignore`
+- `.devcontainer/` directory
+
+**Display:**
+- Shows detected file types (e.g., `🐳 Dockerfile+compose`)
+- Optionally shows Docker context if not "default"
+- Falls back to "docker" if detection unclear
+
+**Example output:** `🐳 Dockerfile+compose` or `🐳 compose (prod-cluster)`
+
+---
+
+### Using Modules in Templates
+
+Modules are available as an array in the `modules` variable:
+
 ```handlebars
 {{#each modules}}
   {{color colors.cyan this.content}}
 {{/each}}
 ```
+
+**Module object properties:**
+- `id` - Module identifier (e.g., "python", "node", "go")
+- `content` - Rendered module output (e.g., "🐍 myenv", "⬢ my-app")
+
+**Example: Segment-style modules**
+```handlebars
+{{#each modules}}
+  {{bg colors.bg_module}}{{fg colors.fg_light}} {{this.content}} {{reset}}
+{{/each}}
+```
+
+**Example: Inline modules with separators**
+```handlebars
+{{#each modules}}
+  {{color colors.blue "["}}{{this.content}}{{color colors.blue "]"}}
+{{/each}}
+```
+
+### Module Configuration
+
+All modules are **enabled by default** and automatically appear when relevant. To customize individual modules, you would need to create custom module configurations (feature coming soon).
+
+**Current customization via environment:**
+- Modules automatically detect their environment
+- Ruby and Go show versions by default
+- Python, Node, Rust, and Docker hide versions by default (faster rendering)
+
+### Performance Characteristics
+
+- **Detection time:** <1ms per module (filesystem checks only)
+- **Caching:** 200ms per module (reuses results for rapid prompts)
+- **Version queries:** ~10-50ms when enabled (runs `python --version`, etc.)
+- **Recommendation:** Disable version display for faster prompts, or enable for development workflows
+
+### Security Model
+
+The module system is designed with security as a priority:
+
+1. **Sandboxed filesystem:** Modules can only access current directory and home directory
+2. **No arbitrary execution:** Detection uses only filesystem checks and controlled command execution
+3. **Size limits:** File reads limited to 1MB maximum
+4. **Timeout protection:** Module renders timeout after 100ms to prevent hanging
+5. **No network access:** Modules operate entirely on local filesystem and installed binaries
 
 ## Advanced Features
 
@@ -345,7 +485,9 @@ cargo clippy
 | Gradient text | Yes | No | No | Partial |
 | Template engine | Handlebars | Go templates | TOML | Zsh |
 | Dual config system | Yes | No | No | Partial |
+| Language modules | 6 (Python, Node, Go, Ruby, Rust, Docker) | 40+ | 40+ | Limited |
 | Sandboxed modules | Yes | No | No | No |
+| Module caching | 200ms intelligent | None | Filesystem-based | Limited |
 
 ## License
 
