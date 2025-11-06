@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1](https://github.com/mikemackintosh/zush/compare/v1.1.0...v1.1.1) (2025-11-06)
+
+
+### 🐛 Bug Fixes
+
+* **ci:** update action-gh-release to v2 to resolve artifact deprecation ([3c03e9f](https://github.com/mikemackintosh/zush/commit/3c03e9fb9094d89fb74c918d1a45036f71b5a41d))
+
 ## [1.1.0](https://github.com/mikemackintosh/zush/compare/v1.0.5...v1.1.0) (2025-11-06)
 
 
