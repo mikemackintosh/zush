@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.3](https://github.com/mikemackintosh/zush/compare/v1.1.2...v1.1.3) (2025-11-06)
+
+
+### 🐛 Bug Fixes
+
+* **ci:** enable vendored OpenSSL for ARM64 cross-compilation ([0779030](https://github.com/mikemackintosh/zush/commit/0779030b6991860d2e0e9fc6fba41efa8dbca96d))
+
 ## [1.1.1](https://github.com/mikemackintosh/zush/compare/v1.1.0...v1.1.1) (2025-11-06)
 
 
