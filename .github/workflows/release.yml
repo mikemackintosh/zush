@@ -194,12 +194,25 @@ jobs:
           Move-Item $ArchiveName $env:GITHUB_WORKSPACE/
           Move-Item "$ArchiveName.sha256" $env:GITHUB_WORKSPACE/
 
-      - name: Upload Release Asset
+      - name: Upload Release Asset (Unix)
+        if: runner.os != 'Windows'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
           files: |
-            ${{ matrix.artifact_name }}.*
+            ${{ matrix.artifact_name }}.tar.gz
+            ${{ matrix.artifact_name }}.tar.gz.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Release Asset (Windows)
+        if: runner.os == 'Windows'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: |
+            ${{ matrix.artifact_name }}.zip
+            ${{ matrix.artifact_name }}.zip.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
