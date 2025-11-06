@@ -24,6 +24,7 @@ impl ModuleRegistry {
         // Register all built-in modules
         registry.register(Box::new(super::python::PythonModule::new()));
         registry.register(Box::new(super::node::NodeModule::new()));
+        registry.register(Box::new(super::ruby::RubyModule::new()));
         registry.register(Box::new(super::rust_lang::RustModule::new()));
         registry.register(Box::new(super::docker::DockerModule::new()));
 

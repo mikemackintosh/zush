@@ -2486,7 +2486,7 @@ dependencies = [
 
 [[package]]
 name = "zush-prompt"
-version = "1.0.3"
+version = "1.0.9"
 dependencies = [
  "anyhow",
  "cached",

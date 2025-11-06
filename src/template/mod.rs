@@ -6,7 +6,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 mod preprocessor;
-pub use preprocessor::{SegmentDef, TemplatePreprocessor};
+pub use self::preprocessor::{SegmentDef, TemplatePreprocessor};
 
 /// Template engine for prompt rendering
 pub struct TemplateEngine {

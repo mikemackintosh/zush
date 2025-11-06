@@ -9,6 +9,7 @@ pub mod docker;
 pub mod node;
 pub mod python;
 pub mod registry;
+pub mod ruby;
 pub mod rust_lang;
 
 /// Module trait - implemented by all prompt modules
