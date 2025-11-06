@@ -124,9 +124,11 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install cross-compilation tool
+      - name: Install cross-compilation dependencies
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu cmake
           cargo install cross --git https://github.com/cross-rs/cross
 
       - name: Cache cargo registry
