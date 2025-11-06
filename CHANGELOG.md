@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0](https://github.com/mikemackintosh/zush/compare/v1.0.5...v1.1.0) (2025-11-06)
+
+
+### ✨ Features
+
+* add go support and enhace docs ([1e1b052](https://github.com/mikemackintosh/zush/commit/1e1b0527af06e635a9a8c9b9e21e57f3c98e0011))
+* add ruby ([52eddb3](https://github.com/mikemackintosh/zush/commit/52eddb337cbac425621072c44876b49c159d02a6))
+
+
+### 🔨 Chores
+
+* update readme ([d33339b](https://github.com/mikemackintosh/zush/commit/d33339b8c4efb2d351b445fb85eed990cb3837b2))
+
 ## [1.0.5](https://github.com/mikemackintosh/zush/compare/v1.0.4...v1.0.5) (2025-10-17)
 
 
