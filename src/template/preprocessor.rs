@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use anyhow::{bail, Result};
 use std::collections::HashMap;
 
@@ -122,7 +124,7 @@ impl TemplatePreprocessor {
                 && chars[i + 2..i + 9].iter().collect::<String>() == "segment"
             {
                 // Parse segment definition
-                let seg_start = i;
+                let _seg_start = i;
                 i += 9; // Skip "{{segment"
 
                 // Find the end of opening tag }}
@@ -414,7 +416,7 @@ impl TemplatePreprocessor {
     /// Process style tags like (bold), (dim), (fg #ff0000), etc.
     fn process_styles(&self, template: &str) -> Result<String> {
         let mut output = String::new();
-        let mut chars: Vec<char> = template.chars().collect();
+        let chars: Vec<char> = template.chars().collect();
         let mut i = 0;
         let mut style_stack: Vec<StyleTag> = Vec::new();
 
@@ -649,119 +651,20 @@ impl TemplatePreprocessor {
     }
 
     /// Resolve a powerline symbol from a standardized name
-    /// Returns the UTF-8 encoded symbol character
+    /// Uses the centralized symbol registry for O(1) lookup
     fn resolve_symbol(symbol_name: &str) -> Result<String> {
-        let symbol = match symbol_name.trim() {
-            // Powerline triangles (solid arrows)
-            "triangle_right" | "tri_right" | "arrow_right" => "\u{e0b0}", //
-            "triangle_left" | "tri_left" | "arrow_left" => "\u{e0b2}",    //
-
-            "inverted_triangle_left" | "inv_tri_right" | "inv_arrow_right" => "\u{e0d7}", //
-            "inverted_triangle_right" | "inv_tri_left" | "inv_arrow_left" => "\u{e0d6}",  //
-
-            // Powerline pills/rounded (flame-like)
-            "pill_left" | "round_left" => "\u{e0b6}",   //
-            "pill_right" | "round_right" => "\u{e0b4}", //
-
-            // Flame
-            "flame_left" => "\u{e0c0}",  //
-            "flame_right" => "\u{e0c2}", //
-
-            // Trapezoid shapes
-            "trapezoid_right" => "\u{e0d2}", //
-            "trapezoid_left" => "\u{e0d4}",  //
-
-            // Powerline angles (thin arrows)
-            "angle_right" | "thin_right" => "\u{e0b1}", //
-            "angle_left" | "thin_left" => "\u{e0b3}",   //
-
-            // Powerline thin pills/rounded
-            "pill_right_thin" | "round_right_thin" => "\u{e0b5}", //
-            "pill_left_thin" | "round_left_thin" => "\u{e0b7}",   //
-
-            // Powerline circles (semi-circles)
-            "circle_right" | "semicircle_right" => "\u{e0b8}", //
-            "circle_left" | "semicircle_left" => "\u{e0ba}",   //
-
-            // Powerline slants/diagonal
-            "slant_right" | "diagonal_right" => "\u{e0bc}", //
-            "slant_left" | "diagonal_left" => "\u{e0be}",   //
-
-            // Misc shapes
-            "ice_cream" => "\u{f0efd}",         // Ice Cream (fun)
-            "ice_cream_thick" => "\u{ef888}",   // Custom glyph
-            "ice_cream_outline" => "\u{f082a}", // Ice Cream Outline (fun)
-
-            // Slash
-            "backslash" | "backslash" => "\u{e216}", //
-
-            // Additional powerline shapes
-            "lower_triangle_right" => "\u{e0b8}", //
-            "lower_triangle_left" => "\u{e0ba}",  //
-            "upper_triangle_right" => "\u{e0bc}", //
-            "upper_triangle_left" => "\u{e0be}",  //
-
-            // Common nerd font icons
-            "git_branch" | "branch" => "\u{e0a0}", //
-            "lock" => "\u{e0a2}",                  //
-            "cog" | "gear" => "\u{e615}",          //
-            "home" => "\u{f015}",                  //
-            "folder" => "\u{f07c}",                //
-            "folder_open" => "\u{f07b}",           //
-
-            // Extras
-            "timer" => "\u{f0109}",                      //
-            "heart" => "\u{f004}",                       //
-            "star" => "\u{f005}",                        //
-            "check" => "\u{f00c}",                       //
-            "cross" | "x" => "\u{f00d}",                 //
-            "info" => "\u{f129}",                        //
-            "warning" => "\u{f071}",                     //
-            "question" => "\u{f128}",                    //
-            "clock" => "\u{f017}",                       //
-            "calendar" => "\u{f133}",                    //
-            "mail" | "envelope" => "\u{f0e0}",           //
-            "phone" => "\u{f095}",                       //
-            "music" => "\u{f001}",                       //
-            "camera" => "\u{f030}",                      //
-            "search" | "magnifying_glass" => "\u{f002}", //
-            "trash" | "trash_can" => "\u{f1f8}",         //
-            "battery_full" => "\u{f240}",                //
-            "battery_half" => "\u{f242}",                //
-            "battery_low" => "\u{f243}",                 //
-            "wifi" => "\u{f1eb}",                        //
-            "plug" => "\u{f1e6}",                        //
-            "cloud" => "\u{f0c2}",                       //
-            "sun" => "\u{f185}",                         //
-            "moon" => "\u{f186}",                        //
-            "fire" => "\u{f06d}",                        //
-            "bug" => "\u{f188}",                         //
-            "code" => "\u{f121}",                        //
-            "terminal" => "\u{f120}",                    //
-            "keyboard" => "\u{f11c}",                    //
-            "laptop" => "\u{f109}",                      //
-            "desktop" => "\u{f108}",                     //
-            "server" => "\u{f233}",                      //
-            "computer" => "\u{f4b3}",                    //
-            "rocket" => "\u{f135}",                      //
-            "shield" => "\u{f3ed}",                      //
-            "terminal_power" => "\u{f489}",              //
-            "terminal_fire" => "\u{f489}",               //
-            "terminal_bolt" => "\u{f489}",               //
-            "terminal_flame" => "\u{f489}", // "terminal_lightning" => "\u{f489}",                          //
-            "lightning" => "\u{f0e7}",      //
-            "zap" => "\u{f0e7}", // "flash" => "\u{f0e7}",                                     //
-            "insect" => "\u{f188}", //
-            "leaf" => "\u{f06c}", //
-            "paw" => "\u{f1b0}", //
-
-            _ => bail!(
-                "Unknown symbol name: {}. See documentation for available symbols.",
-                symbol_name
-            ),
-        };
-
-        Ok(symbol.to_string())
+        crate::symbols::resolve_builtin(symbol_name)
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Unknown symbol name: '{}'. Use one of: {:?}",
+                    symbol_name.trim(),
+                    crate::symbols::available_symbols()
+                        .into_iter()
+                        .take(10)
+                        .collect::<Vec<_>>()
+                )
+            })
     }
 }
 
