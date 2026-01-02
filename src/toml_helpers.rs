@@ -148,7 +148,8 @@ impl TomlParser {
                         if let Some(color_key) = key.strip_prefix("colors.") {
                             colors.insert(color_key.to_string(), json!(str_value));
                         } else if let Some(symbol_key) = key.strip_prefix("symbols.") {
-                            symbols.insert(symbol_key.to_string(), json!(unicode_parser(str_value)));
+                            symbols
+                                .insert(symbol_key.to_string(), json!(unicode_parser(str_value)));
                         }
                     }
                 }

@@ -122,7 +122,10 @@ fn render_prompt(
     let mut engine = TemplateEngine::new()?;
 
     // Parse theme/config TOML once and reuse
-    let source_str = theme_str.as_ref().or(config_str.as_ref()).map(|s| s.as_str());
+    let source_str = theme_str
+        .as_ref()
+        .or(config_str.as_ref())
+        .map(|s| s.as_str());
     let toml_parser = toml_helpers::TomlParser::new(source_str);
 
     // Extract colors for preprocessing (allows templates to use named colors)
