@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::color::Color;
 use anyhow::{Context as AnyhowContext, Result};
 use handlebars::{Context, Handlebars, Helper, HelperResult, Output, RenderContext};
@@ -584,7 +586,7 @@ fn format_time_helper(
     use chrono::{Local, Timelike};
 
     // Get the time string from context (if provided) or use current time
-    let time_str = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
+    let _time_str = h.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
     let format_str = h
         .param(1)
         .and_then(|v| v.value().as_str())

@@ -133,7 +133,7 @@ impl ModuleRegistry {
     fn render_with_timeout(
         module: &dyn Module,
         context: &ModuleContext,
-        timeout: Duration,
+        _timeout: Duration,
     ) -> Result<String> {
         // For now, just render directly
         // In the future, could use tokio::time::timeout for async

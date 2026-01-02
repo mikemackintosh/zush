@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use anyhow::{Context, Result};
 use std::io::{self, Write};
 use terminal_size::{terminal_size, Height, Width};

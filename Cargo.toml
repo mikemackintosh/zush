@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 # Terminal handling and colors
 crossterm = "0.27"
-termcolor = "1.4"
 terminal_size = "0.3"
 unicode-width = "0.1"
 unicode-segmentation = "1.10"
@@ -25,11 +24,9 @@ clap = { version = "4.4", features = ["derive"] }
 
 # Error handling
 anyhow = "1.0"
-thiserror = "1.0"
 
-# Performance and async
+# Async (optional)
 tokio = { version = "1.35", features = ["full"], optional = true }
-rayon = "1.8"
 
 # Git integration
 git2 = { version = "0.18", features = ["vendored-libgit2", "vendored-openssl"] }
@@ -44,9 +41,6 @@ chrono = "0.4"
 # Path handling
 dirs = "5.0"
 shellexpand = "3.1"
-
-# Caching for performance
-cached = "0.46"
 
 [dev-dependencies]
 tempfile = "3.8"
