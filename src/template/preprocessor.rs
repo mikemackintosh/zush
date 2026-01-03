@@ -478,12 +478,10 @@ impl TemplatePreprocessor {
             }
         }
 
-        // Check for unclosed tags - but be lenient for tags that might be closed in handlebars branches
-        // We'll warn about unclosed tags at the end of the template
-        if !style_stack.is_empty() {
-            let unclosed: Vec<String> = style_stack.iter().map(|t| t.name.clone()).collect();
-            bail!("Unclosed style tags at end of template: {:?}. Each opening tag like (bold) must have a matching closing tag like (/bold).", unclosed);
-        }
+        // Be lenient about unclosed tags - they may be balanced within handlebars conditionals
+        // The ANSI output will still work correctly since terminals handle escape sequences
+        // Example: {{#if x}}(bg red){{else}}(bg blue){{/if}}...(/bg) is valid
+        // We can't statically validate this without understanding the conditional structure
 
         Ok(output)
     }
