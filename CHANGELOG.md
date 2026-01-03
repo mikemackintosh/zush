@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1](https://github.com/mikemackintosh/zush/compare/v1.3.0...v1.3.1) (2026-01-03)
+
+### 🐛 Bug Fixes
+
+* macos build version ([d44af9a](https://github.com/mikemackintosh/zush/commit/d44af9a89688a009c703b0bbe08bfe6d3c30f6dd))
+
 ## [1.3.0](https://github.com/mikemackintosh/zush/compare/v1.2.0...v1.3.0) (2026-01-03)
 
 ### ✨ Features
