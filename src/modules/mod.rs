@@ -329,7 +329,10 @@ mod tests {
         let path = Path::new("/home/user/./project/./file.txt");
         let normalized = SandboxedFs::normalize_path(path);
 
-        assert_eq!(normalized, Some(PathBuf::from("/home/user/project/file.txt")));
+        assert_eq!(
+            normalized,
+            Some(PathBuf::from("/home/user/project/file.txt"))
+        );
     }
 
     #[test]
