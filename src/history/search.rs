@@ -201,10 +201,7 @@ mod tests {
 
     #[test]
     fn test_filter_directory() {
-        let mut entries = vec![
-            make_entry("cmd1", 1000),
-            make_entry("cmd2", 2000),
-        ];
+        let mut entries = vec![make_entry("cmd1", 1000), make_entry("cmd2", 2000)];
         entries[0].dir = "/home/user/project".to_string();
         entries[1].dir = "/home/user/other".to_string();
 

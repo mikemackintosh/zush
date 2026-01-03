@@ -587,8 +587,7 @@ fn handle_history_command(command: &cli::HistoryCommands) -> Result<()> {
                 })
             });
 
-            let hostname =
-                whoami::fallible::hostname().unwrap_or_else(|_| "unknown".to_string());
+            let hostname = whoami::fallible::hostname().unwrap_or_else(|_| "unknown".to_string());
 
             let entry = history::HistoryEntry::new(
                 command.clone(),
@@ -652,12 +651,8 @@ fn handle_history_command(command: &cli::HistoryCommands) -> Result<()> {
                 }
             } else {
                 // Text-based search output
-                let results = history::search::search(
-                    &entries,
-                    query.as_deref().unwrap_or(""),
-                    &filter,
-                    20,
-                );
+                let results =
+                    history::search::search(&entries, query.as_deref().unwrap_or(""), &filter, 20);
 
                 for result in results {
                     println!("{}", result.entry.cmd);
@@ -703,7 +698,11 @@ fn handle_history_command(command: &cli::HistoryCommands) -> Result<()> {
             }
         }
 
-        HistoryCommands::Clear { older_than, all, force } => {
+        HistoryCommands::Clear {
+            older_than,
+            all,
+            force,
+        } => {
             if let Some(days) = older_than {
                 let removed = history::clear_older_than(*days)?;
                 println!("Removed {} entries older than {} days", removed, days);
@@ -727,10 +726,7 @@ fn handle_history_command(command: &cli::HistoryCommands) -> Result<()> {
 
             println!("History file: {}", path.display());
             println!("Total entries: {}", stats.entry_count);
-            println!(
-                "File size: {:.2} KB",
-                stats.file_size_bytes as f64 / 1024.0
-            );
+            println!("File size: {:.2} KB", stats.file_size_bytes as f64 / 1024.0);
 
             if let Some(oldest) = stats.oldest_timestamp {
                 use chrono::{Local, TimeZone};

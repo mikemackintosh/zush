@@ -176,7 +176,8 @@ impl App {
                     self.zsh_filtered = self.zsh_entries.iter().rev().cloned().collect();
                 } else {
                     let query_lower = self.query.to_lowercase();
-                    self.zsh_filtered = self.zsh_entries
+                    self.zsh_filtered = self
+                        .zsh_entries
                         .iter()
                         .rev()
                         .filter(|cmd| cmd.to_lowercase().contains(&query_lower))
@@ -224,12 +225,11 @@ impl App {
 
     fn selected_command(&self) -> Option<String> {
         match self.current_tab {
-            HistoryTab::Session => {
-                self.session_filtered.get(self.selected).map(|e| e.cmd.clone())
-            }
-            HistoryTab::ZshHistory => {
-                self.zsh_filtered.get(self.selected).cloned()
-            }
+            HistoryTab::Session => self
+                .session_filtered
+                .get(self.selected)
+                .map(|e| e.cmd.clone()),
+            HistoryTab::ZshHistory => self.zsh_filtered.get(self.selected).cloned(),
         }
     }
 
@@ -278,7 +278,12 @@ fn run_with_tty(entries: Vec<HistoryEntry>) -> Result<Option<String>> {
         .read(true)
         .write(true)
         .open("/dev/tty")
-        .map_err(|e| anyhow::anyhow!("Cannot open /dev/tty: {}. Are you running in a terminal?", e))?;
+        .map_err(|e| {
+            anyhow::anyhow!(
+                "Cannot open /dev/tty: {}. Are you running in a terminal?",
+                e
+            )
+        })?;
 
     // Open a separate handle for output
     let tty_output = std::fs::OpenOptions::new()
@@ -353,7 +358,8 @@ fn run_app_tty(
 
     loop {
         // Draw the UI
-        terminal.draw(|f| draw_ui(f, app))
+        terminal
+            .draw(|f| draw_ui(f, app))
             .map_err(|e| anyhow::anyhow!("Draw error: {}", e))?;
 
         // Read input directly from TTY (blocking)
@@ -366,7 +372,13 @@ fn run_app_tty(
                 tv_sec: 0,
                 tv_usec: 100_000, // 100ms
             };
-            libc::select(fd + 1, &mut fds, std::ptr::null_mut(), std::ptr::null_mut(), &mut timeout)
+            libc::select(
+                fd + 1,
+                &mut fds,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                &mut timeout,
+            )
         };
 
         if ready <= 0 {
@@ -430,7 +442,7 @@ fn run_app_tty(
                         || (b >= 0x30 && b <= 0x39)  // 0-9
                         || (b >= 0x41 && b <= 0x44)  // A-D (arrow finals)
                         || b == 0x5a  // Z (shift+tab)
-                        || b == 0x7e  // ~ (page up/down)
+                        || b == 0x7e // ~ (page up/down)
                 });
 
                 if bytes.first() == Some(&0x1b)
@@ -455,10 +467,10 @@ fn run_app_tty(
 fn handle_csi_sequence(app: &mut App, rest: &[u8]) {
     match rest {
         // Arrow keys
-        [0x41] => app.move_up(),         // A = Up
-        [0x42] => app.move_down(),       // B = Down
-        [0x43] => app.switch_tab(),      // C = Right (switch tab)
-        [0x44] => app.switch_tab(),      // D = Left (switch tab)
+        [0x41] => app.move_up(),    // A = Up
+        [0x42] => app.move_down(),  // B = Down
+        [0x43] => app.switch_tab(), // C = Right (switch tab)
+        [0x44] => app.switch_tab(), // D = Left (switch tab)
 
         // Shift+Tab: Z
         [0x5a] => app.switch_tab(),
@@ -472,11 +484,11 @@ fn handle_csi_sequence(app: &mut App, rest: &[u8]) {
         [0x31, 0x3b, modifier, direction] => {
             match (*modifier, *direction) {
                 // Shift+Arrow or Ctrl+Arrow = page
-                (0x32, 0x41) | (0x35, 0x41) => app.page_up(),   // Shift/Ctrl + Up
+                (0x32, 0x41) | (0x35, 0x41) => app.page_up(), // Shift/Ctrl + Up
                 (0x32, 0x42) | (0x35, 0x42) => app.page_down(), // Shift/Ctrl + Down
                 (0x32, 0x43) | (0x35, 0x43) => app.switch_tab(), // Shift/Ctrl + Right
                 (0x32, 0x44) | (0x35, 0x44) => app.switch_tab(), // Shift/Ctrl + Left
-                _ => {} // Ignore other modified arrows
+                _ => {}                                       // Ignore other modified arrows
             }
         }
 
@@ -661,7 +673,12 @@ fn draw_results_list(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
 
     // Show scroll indicator in title if there are more items
     let title = if total > visible_height {
-        format!(" {}-{} of {} ", scroll_offset + 1, (scroll_offset + visible_height).min(total), total)
+        format!(
+            " {}-{} of {} ",
+            scroll_offset + 1,
+            (scroll_offset + visible_height).min(total),
+            total
+        )
     } else {
         String::new()
     };

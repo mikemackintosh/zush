@@ -1,10 +1,10 @@
 //! TUI interfaces for history search
 
-mod fzf;
 mod full;
+mod fzf;
 
-pub use fzf::run_fzf_picker;
 pub use full::run_full_picker;
+pub use fzf::run_fzf_picker;
 
 use crate::history::HistoryEntry;
 use anyhow::Result;
