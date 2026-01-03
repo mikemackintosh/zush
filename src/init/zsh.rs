@@ -248,6 +248,10 @@ typeset -g ZUSH_CMD_START_TIME=0
 typeset -g ZUSH_CMD_DURATION=0
 typeset -g ZUSH_PROMPT_RENDERED=0
 typeset -g ZUSH_PROMPT_LINES=3  # Number of lines in the current prompt (TODO: make dynamic)
+typeset -g ZUSH_LAST_COMMAND=""
+
+# Generate unique session ID for history tracking (once per shell)
+typeset -g ZUSH_SESSION_ID="${ZUSH_SESSION_ID:-$(head -c 8 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null || echo $$)}"
 
 # ============================================================================
 # Helper functions to avoid code duplication
@@ -310,6 +314,7 @@ _zush_render_transient() {
 zush_preexec() {
     ZUSH_CMD_START_TIME=$EPOCHREALTIME
     ZUSH_PROMPT_RENDERED=0
+    ZUSH_LAST_COMMAND="$1"  # Capture command for history
 
     # Render transient prompt with command appended
     _zush_render_transient "$ZUSH_LAST_EXIT_CODE" "$ZUSH_CMD_DURATION" "$1"
@@ -328,6 +333,20 @@ zush_precmd() {
         ZUSH_CMD_START_TIME=0
     else
         ZUSH_CMD_DURATION=0
+    fi
+
+    # Record command to history (background, non-blocking)
+    if [[ -n "$ZUSH_LAST_COMMAND" ]]; then
+        # Skip commands starting with space (private commands)
+        if [[ "$ZUSH_LAST_COMMAND" != " "* ]]; then
+            $ZUSH_PROMPT_BIN history add \
+                --session "$ZUSH_SESSION_ID" \
+                --exit-code $ZUSH_LAST_EXIT_CODE \
+                --duration $ZUSH_CMD_DURATION \
+                --directory "$PWD" \
+                -- "$ZUSH_LAST_COMMAND" &!
+        fi
+        ZUSH_LAST_COMMAND=""
     fi
 
     # If preexec wasn't called (user just pressed Enter), convert to transient
@@ -362,6 +381,35 @@ PROMPT='$(zush_prompt)'
 
 # Never use RPROMPT - all right-aligned content is handled inline on the first line
 RPROMPT=''
+
+# ============================================================================
+# History search widget (Ctrl+R)
+# ============================================================================
+
+# History search using zush TUI
+zush-history-widget() {
+    local tmpfile="/tmp/zush-history-$$"
+    # Run the TUI - it opens /dev/tty directly for input/output
+    $ZUSH_PROMPT_BIN history search --tui --output "$tmpfile" 2>/dev/null
+    if [[ -f "$tmpfile" ]]; then
+        local selected="$(cat "$tmpfile")"
+        rm -f "$tmpfile"
+        if [[ -n "$selected" ]]; then
+            LBUFFER="$selected"
+            RBUFFER=""
+        fi
+    fi
+    zle reset-prompt
+}
+
+# Register widget and bind to Ctrl+R
+zle -N zush-history-widget
+bindkey '^R' zush-history-widget
+
+# Also provide a command alias
+alias zh='$ZUSH_PROMPT_BIN history'
+alias zhl='$ZUSH_PROMPT_BIN history list'
+alias zhs='$ZUSH_PROMPT_BIN history search --tui'
 "#;
 
 #[cfg(test)]
