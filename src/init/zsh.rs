@@ -25,12 +25,13 @@ zmodload zsh/datetime
 # Example: export ZUSH_PROMPT_BIN="$HOME/.local/bin/zush-prompt"
 ZUSH_PROMPT_BIN="${ZUSH_PROMPT_BIN:-zush-prompt}"
 
-# ZUSH_CURRENT_THEME - Which theme to use
-# Default: "minimal"
+# ZUSH_CURRENT_THEME - Which theme to use (optional)
+# Default: Uses theme from ~/.config/zush/config.toml, or "minimal" if not set
 # Options: dcs, minimal, powerline, split, or path to custom theme
-# Example: export ZUSH_CURRENT_THEME="minimal"
+# Example: export ZUSH_CURRENT_THEME="powerline"
 # Runtime: Use `zush-theme <name>` to switch themes
-typeset -g ZUSH_CURRENT_THEME="${ZUSH_CURRENT_THEME:-minimal}"
+# Note: Only set this if you want to override config.toml's theme setting
+typeset -g ZUSH_CURRENT_THEME="${ZUSH_CURRENT_THEME:-}"
 
 # ZUSH_PROMPT_NEWLINE_BEFORE - Add blank line before prompt (after command output)
 # Default: 1 (enabled)
@@ -77,9 +78,8 @@ zush-theme() {
             ;;
         reset)
             unset ZUSH_CURRENT_THEME
-            ZUSH_CURRENT_THEME="minimal"
-            export ZUSH_CURRENT_THEME
-            echo "✓ Reset to default theme: ${ZUSH_CURRENT_THEME}"
+            ZUSH_CURRENT_THEME=""
+            echo "✓ Reset to config default (reload shell to apply)"
             zle && zle reset-prompt
             return 0
             ;;
