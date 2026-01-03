@@ -1,4 +1,4 @@
-name: Version and Tag
+name: Semantic Release
 
 on:
   push:
@@ -8,31 +8,33 @@ on:
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
-  version:
-    name: Bump Version
+  release:
+    name: Create Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 'lts/*'
 
-      - name: Install semantic-release
+      - name: Install dependencies
         run: |
           npm install -g \
-            semantic-release@^22.0.0 \
-            @semantic-release/git@^10.0.0 \
-            @semantic-release/changelog@^6.0.0 \
-            @semantic-release/exec@^6.0.0 \
-            conventional-changelog-conventionalcommits@^7.0.0
+            semantic-release \
+            @semantic-release/git \
+            @semantic-release/changelog \
+            @semantic-release/exec \
+            conventional-changelog-conventionalcommits
 
       - name: Run semantic-release
         env:

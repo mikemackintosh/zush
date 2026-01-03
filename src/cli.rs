@@ -64,6 +64,103 @@ pub enum Commands {
 
     /// Print configuration template
     Config,
+
+    /// History management
+    #[cfg(feature = "history")]
+    History {
+        #[command(subcommand)]
+        command: HistoryCommands,
+    },
+}
+
+/// History subcommands
+#[cfg(feature = "history")]
+#[derive(Subcommand, Debug)]
+pub enum HistoryCommands {
+    /// Add a command to history
+    Add {
+        /// Session ID (unique per shell instance)
+        #[arg(long)]
+        session: String,
+
+        /// Exit code of the command
+        #[arg(long)]
+        exit_code: i32,
+
+        /// Duration in seconds
+        #[arg(long)]
+        duration: f64,
+
+        /// Working directory (defaults to current)
+        #[arg(long)]
+        directory: Option<String>,
+
+        /// The command that was executed
+        command: String,
+    },
+
+    /// Search history
+    Search {
+        /// Use TUI interface
+        #[arg(long)]
+        tui: bool,
+
+        /// TUI style: fzf (minimal) or full (table)
+        #[arg(long, default_value = "fzf")]
+        style: String,
+
+        /// Filter by directory prefix
+        #[arg(long)]
+        dir: Option<String>,
+
+        /// Filter by session ID
+        #[arg(long)]
+        session: Option<String>,
+
+        /// Only show successful commands (exit code 0)
+        #[arg(long)]
+        successful: bool,
+
+        /// Search query (fuzzy match)
+        query: Option<String>,
+
+        /// Write selected command to file instead of stdout (for ZLE widget)
+        #[arg(long)]
+        output: Option<String>,
+
+        /// Internal: read entries from file (used for TTY respawn)
+        #[arg(long, hide = true)]
+        entries_file: Option<String>,
+    },
+
+    /// List recent history entries
+    List {
+        /// Number of entries to show
+        #[arg(short, long, default_value = "20")]
+        count: usize,
+
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Clear history
+    Clear {
+        /// Clear entries older than N days
+        #[arg(long)]
+        older_than: Option<u32>,
+
+        /// Clear all entries (requires confirmation or --force)
+        #[arg(long)]
+        all: bool,
+
+        /// Skip confirmation
+        #[arg(long)]
+        force: bool,
+    },
+
+    /// Show history statistics
+    Stats,
 }
 
 #[cfg(test)]

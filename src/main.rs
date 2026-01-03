@@ -4,6 +4,8 @@ mod color;
 mod config;
 mod defaults;
 mod git;
+#[cfg(feature = "history")]
+mod history;
 mod init;
 mod modules;
 mod segments;
@@ -31,6 +33,10 @@ fn main() -> Result<()> {
         }
         Some(Commands::Config) => {
             init::print_default_config()?;
+        }
+        #[cfg(feature = "history")]
+        Some(Commands::History { command }) => {
+            handle_history_command(command)?;
         }
         Some(Commands::Prompt {
             context,
@@ -559,4 +565,184 @@ fn convert_to_zsh_format(ansi_str: &str) -> String {
     }
 
     result
+}
+
+#[cfg(feature = "history")]
+fn handle_history_command(command: &cli::HistoryCommands) -> Result<()> {
+    use cli::HistoryCommands;
+
+    match command {
+        HistoryCommands::Add {
+            session,
+            exit_code,
+            duration,
+            directory,
+            command,
+        } => {
+            let dir = directory.clone().unwrap_or_else(|| {
+                std::env::var("PWD").unwrap_or_else(|_| {
+                    std::env::current_dir()
+                        .map(|p| p.display().to_string())
+                        .unwrap_or_else(|_| ".".to_string())
+                })
+            });
+
+            let hostname = whoami::fallible::hostname().unwrap_or_else(|_| "unknown".to_string());
+
+            let entry = history::HistoryEntry::new(
+                command.clone(),
+                dir,
+                session.clone(),
+                *exit_code,
+                (*duration * 1000.0) as u64, // Convert seconds to milliseconds
+                hostname,
+            );
+
+            history::append_entry(&entry)?;
+        }
+
+        HistoryCommands::Search {
+            tui,
+            style,
+            dir,
+            session,
+            successful,
+            query,
+            output,
+            entries_file,
+        } => {
+            // Load entries from file if provided (internal respawn case), otherwise from history
+            let entries = if let Some(file_path) = entries_file {
+                // Read entries from temp file (used when respawning for TTY)
+                use std::io::BufRead;
+                let file = std::fs::File::open(file_path)?;
+                let reader = std::io::BufReader::new(file);
+                let mut entries = Vec::new();
+                for line in reader.lines() {
+                    let line = line?;
+                    if let Ok(entry) = history::HistoryEntry::from_json(&line) {
+                        entries.push(entry);
+                    }
+                }
+                entries
+            } else {
+                history::read_all_entries()?
+            };
+
+            let filter = history::SearchFilter {
+                directory: dir.clone(),
+                session: session.clone(),
+                successful_only: *successful,
+                ..Default::default()
+            };
+
+            if *tui {
+                // Run TUI picker
+                let tui_style = history::tui::TuiStyle::from_str(style);
+                let filtered: Vec<_> = entries.into_iter().filter(|e| filter.matches(e)).collect();
+
+                if let Some(selected) = history::tui::run_picker(filtered, tui_style)? {
+                    // Write to output file if specified (for ZLE widget), otherwise stdout
+                    if let Some(output_path) = output {
+                        std::fs::write(output_path, &selected)?;
+                    } else {
+                        print!("{}", selected);
+                    }
+                }
+            } else {
+                // Text-based search output
+                let results =
+                    history::search::search(&entries, query.as_deref().unwrap_or(""), &filter, 20);
+
+                for result in results {
+                    println!("{}", result.entry.cmd);
+                }
+            }
+        }
+
+        HistoryCommands::List { count, json } => {
+            let entries = history::read_recent_entries(*count)?;
+
+            if *json {
+                let json_entries: Vec<_> = entries
+                    .iter()
+                    .map(|e| {
+                        serde_json::json!({
+                            "ts": e.ts,
+                            "dir": e.dir,
+                            "cmd": e.cmd,
+                            "exit": e.exit,
+                            "dur": e.dur,
+                            "sid": e.sid,
+                            "host": e.host,
+                        })
+                    })
+                    .collect();
+                println!("{}", serde_json::to_string_pretty(&json_entries)?);
+            } else {
+                for entry in entries.iter().rev() {
+                    let time = entry.formatted_time();
+                    let exit_indicator = if entry.exit == 0 {
+                        "\x1b[32m✓\x1b[0m"
+                    } else {
+                        "\x1b[31m✗\x1b[0m"
+                    };
+                    println!(
+                        "{} {} \x1b[90m{}\x1b[0m {}",
+                        exit_indicator,
+                        time,
+                        entry.short_dir(),
+                        entry.cmd
+                    );
+                }
+            }
+        }
+
+        HistoryCommands::Clear {
+            older_than,
+            all,
+            force,
+        } => {
+            if let Some(days) = older_than {
+                let removed = history::clear_older_than(*days)?;
+                println!("Removed {} entries older than {} days", removed, days);
+            } else if *all {
+                if *force {
+                    history::clear_all()?;
+                    println!("History cleared");
+                } else {
+                    eprintln!("Use --force to confirm clearing all history");
+                    std::process::exit(1);
+                }
+            } else {
+                eprintln!("Specify --older-than <days> or --all --force");
+                std::process::exit(1);
+            }
+        }
+
+        HistoryCommands::Stats => {
+            let stats = history::get_stats()?;
+            let path = history::get_history_path()?;
+
+            println!("History file: {}", path.display());
+            println!("Total entries: {}", stats.entry_count);
+            println!("File size: {:.2} KB", stats.file_size_bytes as f64 / 1024.0);
+
+            if let Some(oldest) = stats.oldest_timestamp {
+                use chrono::{Local, TimeZone};
+                if let Some(dt) = Local.timestamp_opt(oldest, 0).single() {
+                    println!("Oldest entry: {}", dt.format("%Y-%m-%d %H:%M:%S"));
+                }
+            }
+
+            if let Some(newest) = stats.newest_timestamp {
+                use chrono::{Local, TimeZone};
+                if let Some(dt) = Local.timestamp_opt(newest, 0).single() {
+                    println!("Newest entry: {}", dt.format("%Y-%m-%d %H:%M:%S"));
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
