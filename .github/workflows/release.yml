@@ -218,9 +218,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  upload-themes:
+    name: Upload Themes
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Package themes
+        run: |
+          cd themes
+          tar -czf ../themes.tar.gz *.toml
+          cd ..
+          sha256sum themes.tar.gz > themes.tar.gz.sha256
+
+      - name: Upload themes archive
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: |
+            themes.tar.gz
+            themes.tar.gz.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   post-release:
     name: Post-Release Summary
-    needs: [create-release, build-and-upload]
+    needs: [create-release, build-and-upload, upload-themes]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

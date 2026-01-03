@@ -33,35 +33,32 @@ After command executes (transient prompt in scrollback):
 
 ## Quick Start
 
-### Installation
+### One-Line Install
 
-1. **Build and install:**
 ```bash
-cargo build --release
-mkdir -p ~/.local/bin
-cp target/release/zush-prompt ~/.local/bin/
+curl -fsSL https://raw.githubusercontent.com/mikemackintosh/zush/main/scripts/install.sh | bash
 ```
 
-2. **Set up configuration:**
-```bash
-mkdir -p ~/.config/zush/themes
-cp -r themes/*.toml ~/.config/zush/themes/
-zush-prompt init zsh > ~/.config/zush/zush.zsh
-```
+Then add to your `~/.zshrc`:
 
-3. **Add to `.zshrc`:**
 ```bash
-# Optional: Configure behavior (before sourcing)
-export ZUSH_CURRENT_THEME="split"           # Default theme
-export ZUSH_PROMPT_NEWLINE_BEFORE=1         # Blank line before prompt
-
-# Load Zush
+export PATH="$HOME/.local/bin:$PATH"
+export ZUSH_CURRENT_THEME="split"  # or: minimal, powerline, dcs, starship, catppuccin
 source ~/.config/zush/zush.zsh
+[ -f ~/.config/zush/zush-theme.zsh ] && source ~/.config/zush/zush-theme.zsh
 ```
 
-4. **Reload:**
+Reload your shell:
 ```bash
 source ~/.zshrc
+```
+
+### Alternative: Build from Source
+
+```bash
+# Requires Rust
+cargo build --release
+make install
 ```
 
 ### Verify Installation
