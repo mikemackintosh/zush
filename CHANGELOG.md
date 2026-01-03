@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0](https://github.com/mikemackintosh/zush/compare/v1.2.0...v1.3.0) (2026-01-03)
+
+### ✨ Features
+
+* history ([f0aea5c](https://github.com/mikemackintosh/zush/commit/f0aea5c91e2b75afb43e094f06c95a6a27021cb5))
+* update ci workflow ([f1ee968](https://github.com/mikemackintosh/zush/commit/f1ee9685ab7f17a4ab393b479adf3eb6c37e2c91))
+
+### 🐛 Bug Fixes
+
+* fmt ([51161f3](https://github.com/mikemackintosh/zush/commit/51161f35e04d6aabe2ec40b304955b5c3f87d9f0))
+* formatting ([2d03c8f](https://github.com/mikemackintosh/zush/commit/2d03c8f8cafcee71f16eea2c62bd229d1a1b11c4))
+* session creation ([ea2909c](https://github.com/mikemackintosh/zush/commit/ea2909ccf84793e63a0486196b79f4915bef6641))
+* update history ([2e0a70c](https://github.com/mikemackintosh/zush/commit/2e0a70c939b8127e055106b84c49f1eda257df29))
+* windows fallbacks ([0de9ee0](https://github.com/mikemackintosh/zush/commit/0de9ee07a6e359ad8f7589d444adff799accb460))
+
+### 🔨 Chores
+
+* **release:** 1.1.3 [skip ci] ([910091a](https://github.com/mikemackintosh/zush/commit/910091a12fdcbf64c68f06242f83fb1138f98391))
+* **release:** 1.1.5 [skip ci] ([a2091e7](https://github.com/mikemackintosh/zush/commit/a2091e78b0958b7d616deda50e4e512393cd5d6b))
+
 ## [1.1.5](https://github.com/mikemackintosh/zush/compare/v1.1.4...v1.1.5) (2026-01-03)
 
 
