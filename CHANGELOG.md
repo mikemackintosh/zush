@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.5](https://github.com/mikemackintosh/zush/compare/v1.1.4...v1.1.5) (2026-01-03)
+
+
+### 🐛 Bug Fixes
+
+* fmt ([3e105e7](https://github.com/mikemackintosh/zush/commit/3e105e790ffe66a316d37b9123be4c290fbfdc14))
+
+
+### 🔨 Chores
+
+* **release:** 1.1.3 [skip ci] ([910091a](https://github.com/mikemackintosh/zush/commit/910091a12fdcbf64c68f06242f83fb1138f98391))
+* update basic logic for optimizations ([c7e6ecb](https://github.com/mikemackintosh/zush/commit/c7e6ecbce1aeaad7e5843a9ca0485db02a9f9867))
+
 ## [1.1.3](https://github.com/mikemackintosh/zush/compare/v1.1.2...v1.1.3) (2025-11-06)
 
 
