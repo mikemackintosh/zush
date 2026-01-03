@@ -392,27 +392,6 @@ fn run_app_tty(
             // Tab - switch between history sources
             [0x09] => app.switch_tab(),
 
-            // Shift+Tab (ESC [ Z) - switch backwards
-            [0x1b, 0x5b, 0x5a] => app.switch_tab(),
-
-            // Arrow up: ESC [ A
-            [0x1b, 0x5b, 0x41] => app.move_up(),
-
-            // Arrow down: ESC [ B
-            [0x1b, 0x5b, 0x42] => app.move_down(),
-
-            // Arrow left: ESC [ D - switch tab left
-            [0x1b, 0x5b, 0x44] => app.switch_tab(),
-
-            // Arrow right: ESC [ C - switch tab right
-            [0x1b, 0x5b, 0x43] => app.switch_tab(),
-
-            // Page Up: ESC [ 5 ~
-            [0x1b, 0x5b, 0x35, 0x7e] => app.page_up(),
-
-            // Page Down: ESC [ 6 ~
-            [0x1b, 0x5b, 0x36, 0x7e] => app.page_down(),
-
             // Ctrl+P (up)
             [0x10] => app.move_up(),
 
@@ -428,14 +407,38 @@ fn run_app_tty(
             // Ctrl+U (clear line)
             [0x15] => app.clear_query(),
 
-            // Regular printable character
-            [c] if *c >= 0x20 && *c < 0x7f => {
+            // CSI sequences: ESC [ ...
+            [0x1b, 0x5b, rest @ ..] => {
+                handle_csi_sequence(app, rest);
+            }
+
+            // Regular printable character (but not [ which could be CSI start)
+            [c] if *c >= 0x20 && *c < 0x7f && *c != 0x5b => {
                 app.insert_char(*c as char);
             }
 
-            // Multi-byte UTF-8 or other sequences - try to parse as UTF-8
+            // Single [ - could be start of CSI sequence, ignore it
+            [0x5b] => {}
+
+            // Multi-byte input - filter out escape sequence fragments
             bytes => {
-                if let Ok(s) = std::str::from_utf8(bytes) {
+                // Check if this looks like a CSI sequence fragment
+                // Patterns: starts with [, or contains ; with surrounding digits (like 1;2B)
+                let dominated_by_csi_chars = bytes.iter().all(|&b| {
+                    b == 0x5b  // [
+                        || b == 0x3b  // ;
+                        || (b >= 0x30 && b <= 0x39)  // 0-9
+                        || (b >= 0x41 && b <= 0x44)  // A-D (arrow finals)
+                        || b == 0x5a  // Z (shift+tab)
+                        || b == 0x7e  // ~ (page up/down)
+                });
+
+                if bytes.first() == Some(&0x1b)
+                    || bytes.first() == Some(&0x5b)
+                    || dominated_by_csi_chars
+                {
+                    // Ignore escape sequences
+                } else if let Ok(s) = std::str::from_utf8(bytes) {
                     for c in s.chars() {
                         if c.is_ascii_graphic() || c == ' ' {
                             app.insert_char(c);
@@ -444,6 +447,41 @@ fn run_app_tty(
                 }
             }
         }
+    }
+}
+
+/// Handle CSI (Control Sequence Introducer) sequences: ESC [ ...
+/// The `rest` parameter contains bytes after "ESC ["
+fn handle_csi_sequence(app: &mut App, rest: &[u8]) {
+    match rest {
+        // Arrow keys
+        [0x41] => app.move_up(),         // A = Up
+        [0x42] => app.move_down(),       // B = Down
+        [0x43] => app.switch_tab(),      // C = Right (switch tab)
+        [0x44] => app.switch_tab(),      // D = Left (switch tab)
+
+        // Shift+Tab: Z
+        [0x5a] => app.switch_tab(),
+
+        // Page Up/Down: 5~ and 6~
+        [0x35, 0x7e] => app.page_up(),   // 5~ = Page Up
+        [0x36, 0x7e] => app.page_down(), // 6~ = Page Down
+
+        // Modified arrow keys: 1;N[ABCD] where N is modifier
+        // N=2: Shift, N=5: Ctrl, N=3: Alt, N=6: Ctrl+Shift
+        [0x31, 0x3b, modifier, direction] => {
+            match (*modifier, *direction) {
+                // Shift+Arrow or Ctrl+Arrow = page
+                (0x32, 0x41) | (0x35, 0x41) => app.page_up(),   // Shift/Ctrl + Up
+                (0x32, 0x42) | (0x35, 0x42) => app.page_down(), // Shift/Ctrl + Down
+                (0x32, 0x43) | (0x35, 0x43) => app.switch_tab(), // Shift/Ctrl + Right
+                (0x32, 0x44) | (0x35, 0x44) => app.switch_tab(), // Shift/Ctrl + Left
+                _ => {} // Ignore other modified arrows
+            }
+        }
+
+        // Ignore any other CSI sequences (don't insert as text)
+        _ => {}
     }
 }
 
@@ -511,15 +549,9 @@ fn draw_search_input(f: &mut ratatui::Frame, app: &App, area: Rect) {
 }
 
 fn draw_results_list(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
-    // Get commands based on current tab
-    let commands: Vec<String> = match app.current_tab {
-        HistoryTab::Session => app.session_filtered.iter().map(|e| e.cmd.clone()).collect(),
-        HistoryTab::ZshHistory => app.zsh_filtered.clone(),
-    };
-
     // Calculate visible window based on area height (minus borders)
     let visible_height = area.height.saturating_sub(2) as usize;
-    let total = commands.len();
+    let total = app.current_list_len();
 
     // Calculate scroll offset to keep selected item visible
     let scroll_offset = if app.selected >= visible_height {
@@ -528,35 +560,104 @@ fn draw_results_list(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
         0
     };
 
-    let items: Vec<ListItem> = commands
-        .iter()
-        .enumerate()
-        .skip(scroll_offset)
-        .take(visible_height)
-        .map(|(i, cmd)| {
-            let style = if i == app.selected {
-                Style::default()
-                    .bg(Color::DarkGray)
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(Color::Gray)
-            };
+    let items: Vec<ListItem> = match app.current_tab {
+        HistoryTab::Session => {
+            app.session_filtered
+                .iter()
+                .enumerate()
+                .skip(scroll_offset)
+                .take(visible_height)
+                .map(|(i, entry)| {
+                    let is_selected = i == app.selected;
+                    let cmd_style = if is_selected {
+                        Style::default()
+                            .bg(Color::DarkGray)
+                            .fg(Color::White)
+                            .add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(Color::Gray)
+                    };
+                    let prefix_style = if is_selected {
+                        Style::default().bg(Color::DarkGray).fg(Color::Cyan)
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    };
+                    let dir_style = if is_selected {
+                        Style::default().bg(Color::DarkGray).fg(Color::Blue)
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    };
 
-            // Truncate command if too long
-            let max_len = area.width.saturating_sub(4) as usize;
-            let display_cmd = if cmd.len() > max_len && max_len > 1 {
-                format!("{}…", &cmd[..max_len - 1])
-            } else {
-                cmd.clone()
-            };
+                    // Format: "HH:MM ~/path  command"
+                    use chrono::{Local, TimeZone};
+                    let time_str = Local
+                        .timestamp_opt(entry.ts, 0)
+                        .single()
+                        .map(|dt| dt.format("%H:%M").to_string())
+                        .unwrap_or_else(|| "??:??".to_string());
 
-            ListItem::new(Line::from(vec![
-                Span::styled(if i == app.selected { "▸ " } else { "  " }, style),
-                Span::styled(display_cmd, style),
-            ]))
-        })
-        .collect();
+                    let short_dir = entry.short_dir();
+                    // Truncate directory if too long
+                    let max_dir_len = 20;
+                    let dir_display = if short_dir.len() > max_dir_len {
+                        format!("…{}", &short_dir[short_dir.len() - max_dir_len + 1..])
+                    } else {
+                        short_dir
+                    };
+
+                    // Calculate remaining space for command
+                    // Format: "▸ HH:MM dir  cmd" = 2 + 5 + 1 + dir_len + 2 + cmd
+                    let prefix_len = 2 + 5 + 1 + dir_display.len() + 2;
+                    let max_cmd_len = (area.width as usize).saturating_sub(prefix_len + 2);
+                    let display_cmd = if entry.cmd.len() > max_cmd_len && max_cmd_len > 1 {
+                        format!("{}…", &entry.cmd[..max_cmd_len - 1])
+                    } else {
+                        entry.cmd.clone()
+                    };
+
+                    ListItem::new(Line::from(vec![
+                        Span::styled(if is_selected { "▸ " } else { "  " }, cmd_style),
+                        Span::styled(time_str, prefix_style),
+                        Span::styled(" ", cmd_style),
+                        Span::styled(dir_display, dir_style),
+                        Span::styled("  ", cmd_style),
+                        Span::styled(display_cmd, cmd_style),
+                    ]))
+                })
+                .collect()
+        }
+        HistoryTab::ZshHistory => {
+            app.zsh_filtered
+                .iter()
+                .enumerate()
+                .skip(scroll_offset)
+                .take(visible_height)
+                .map(|(i, cmd)| {
+                    let style = if i == app.selected {
+                        Style::default()
+                            .bg(Color::DarkGray)
+                            .fg(Color::White)
+                            .add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(Color::Gray)
+                    };
+
+                    // Truncate command if too long
+                    let max_len = area.width.saturating_sub(4) as usize;
+                    let display_cmd = if cmd.len() > max_len && max_len > 1 {
+                        format!("{}…", &cmd[..max_len - 1])
+                    } else {
+                        cmd.clone()
+                    };
+
+                    ListItem::new(Line::from(vec![
+                        Span::styled(if i == app.selected { "▸ " } else { "  " }, style),
+                        Span::styled(display_cmd, style),
+                    ]))
+                })
+                .collect()
+        }
+    };
 
     // Show scroll indicator in title if there are more items
     let title = if total > visible_height {
@@ -582,7 +683,7 @@ fn draw_status_bar(f: &mut ratatui::Frame, app: &App, area: Rect) {
     };
 
     let status = format!(
-        " {}/{} │ Tab switch │ ↑↓ navigate │ Enter select │ Esc cancel ",
+        " {}/{} │ Tab switch │ ↑↓ navigate │ S/C-↑↓ page │ Enter select │ Esc cancel ",
         filtered, total
     );
 
