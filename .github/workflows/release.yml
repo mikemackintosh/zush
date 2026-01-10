@@ -1,9 +1,13 @@
 name: Build Release Binaries
 
+# Manual trigger only - automatic builds are handled by semantic-release.yml
 on:
-  create:
-    tags:
-      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g., v1.3.3)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -49,7 +53,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}
+          ref: ${{ inputs.tag }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -105,7 +109,7 @@ jobs:
         if: runner.os != 'Windows'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ inputs.tag }}
           files: |
             dist/${{ matrix.artifact_name }}.tar.gz
             dist/${{ matrix.artifact_name }}.tar.gz.sha256
@@ -116,7 +120,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ inputs.tag }}
           files: |
             dist/${{ matrix.artifact_name }}.zip
             dist/${{ matrix.artifact_name }}.zip.sha256
@@ -130,7 +134,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}
+          ref: ${{ inputs.tag }}
 
       - name: Package themes
         run: |
@@ -142,7 +146,7 @@ jobs:
       - name: Upload themes to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ inputs.tag }}
           files: |
             themes.tar.gz
             themes.tar.gz.sha256
