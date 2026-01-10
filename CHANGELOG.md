@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0](https://github.com/mikemackintosh/zush/compare/v1.3.4...v1.4.0) (2026-01-10)
+
+### ✨ Features
+
+* add remote SSH theme and is_ssh context variable ([09fce85](https://github.com/mikemackintosh/zush/commit/09fce85b8adcf7ea47349fda323c0ea2ed03b005))
+
 ## [1.3.4](https://github.com/mikemackintosh/zush/compare/v1.3.3...v1.3.4) (2026-01-10)
 
 ### 🐛 Bug Fixes
