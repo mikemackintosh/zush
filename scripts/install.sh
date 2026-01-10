@@ -45,16 +45,20 @@ detect_platform() {
     echo "${os}-${arch}"
 }
 
-# Get latest release version
+# Get latest release version (returns full tag name)
 get_latest_version() {
+    local response tag_name
     if command -v curl &>/dev/null; then
-        curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/'
+        response=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest")
     elif command -v wget &>/dev/null; then
-        wget -qO- "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/'
+        response=$(wget -qO- "https://api.github.com/repos/$REPO/releases/latest")
     else
         error "Neither curl nor wget found. Please install one."
         exit 1
     fi
+    # Extract tag_name value - handles formats like "v1.2.3" or "release/v1.3.x"
+    tag_name=$(echo "$response" | grep '"tag_name"' | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+    echo "$tag_name"
 }
 
 # Download file
@@ -97,9 +101,9 @@ main() {
     mkdir -p "$INSTALL_DIR"
     mkdir -p "$THEMES_DIR"
 
-    # Build download URL
+    # Build download URL (version is the full tag name)
     local archive_name="zush-prompt-${platform}.tar.gz"
-    local download_url="https://github.com/$REPO/releases/download/v${version}/${archive_name}"
+    local download_url="https://github.com/$REPO/releases/download/${version}/${archive_name}"
 
     # Download binary
     info "Downloading $archive_name..."
@@ -129,7 +133,7 @@ main() {
 
     # Download themes
     info "Downloading themes..."
-    local themes_url="https://github.com/$REPO/releases/download/v${version}/themes.tar.gz"
+    local themes_url="https://github.com/$REPO/releases/download/${version}/themes.tar.gz"
     if download "$themes_url" "$tmp_dir/themes.tar.gz" 2>/dev/null; then
         tar -xzf "$tmp_dir/themes.tar.gz" -C "$THEMES_DIR"
         success "Themes installed to $THEMES_DIR"
