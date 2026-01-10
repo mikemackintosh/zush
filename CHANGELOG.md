@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.4](https://github.com/mikemackintosh/zush/compare/v1.3.3...v1.3.4) (2026-01-10)
+
+### 🐛 Bug Fixes
+
+* distinguish segment helper calls from block definitions ([f3e20dd](https://github.com/mikemackintosh/zush/commit/f3e20dd0d1d12b5b817b9865bbe36e0e2f3dba6d))
+
+### 👷 CI/CD
+
+* build release binaries as part of semantic-release workflow ([0f70280](https://github.com/mikemackintosh/zush/commit/0f702800ce595c0f238529bbf57613565fda8068))
+
 ## [1.3.3](https://github.com/mikemackintosh/zush/compare/v1.3.2...v1.3.3) (2026-01-10)
 
 ### 🐛 Bug Fixes
