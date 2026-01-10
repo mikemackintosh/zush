@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.1](https://github.com/mikemackintosh/zush/compare/v1.5.0...v1.5.1) (2026-01-10)
+
+### 🐛 Bug Fixes
+
+* **remote:** add powerline separator characters between segments ([a50ad1f](https://github.com/mikemackintosh/zush/commit/a50ad1f9b01b0a20de61f84b851db921dadde17f))
+
 ## [1.5.0](https://github.com/mikemackintosh/zush/compare/v1.4.0...v1.5.0) (2026-01-10)
 
 ### ✨ Features
