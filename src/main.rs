@@ -245,6 +245,10 @@ fn render_prompt(
         }
     }
 
+    // Detect if running over SSH
+    let is_ssh = std::env::var("SSH_CONNECTION").is_ok() || std::env::var("SSH_TTY").is_ok();
+    context.insert("is_ssh".to_string(), json!(is_ssh));
+
     // Count background jobs from environment (replaces jobs | wc -l)
     // This is tricky - we need to count from parent shell's job table
     // For now, allow shell to pass it, but provide a default
