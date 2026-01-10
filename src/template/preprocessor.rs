@@ -139,7 +139,8 @@ impl TemplatePreprocessor {
 
                 // Find the end of opening tag }}
                 let mut tag_end = i;
-                while tag_end + 1 < chars.len() && !(chars[tag_end] == '}' && chars[tag_end + 1] == '}')
+                while tag_end + 1 < chars.len()
+                    && !(chars[tag_end] == '}' && chars[tag_end + 1] == '}')
                 {
                     tag_end += 1;
                 }
