@@ -111,6 +111,13 @@ impl TemplatePreprocessor {
 
     /// Extract {{segment}}...{{endsegment}} blocks and remove them from template
     /// Returns (template_without_definitions, segment_map)
+    ///
+    /// Note: This only handles segment BLOCK definitions like:
+    ///   {{segment "name" bg="..." fg="..."}}content{{endsegment}}
+    ///
+    /// It does NOT handle the segment HELPER syntax like:
+    ///   {{segment colors.bg colors.fg "text"}}
+    /// Those are passed through to Handlebars to process.
     fn extract_segments(&self, template: &str) -> Result<(String, HashMap<String, SegmentDef>)> {
         let mut result = String::new();
         let mut segments = HashMap::new();
@@ -123,23 +130,41 @@ impl TemplatePreprocessor {
                 && chars[i..i + 2] == ['{', '{']
                 && chars[i + 2..i + 9].iter().collect::<String>() == "segment"
             {
-                // Parse segment definition
-                let _seg_start = i;
+                // Check if this is a block definition (has quoted name) or helper call
+                // Block definition: {{segment "name" ...}}...{{endsegment}}
+                // Helper call: {{segment colors.bg colors.fg "text"}}
+
+                let seg_start = i;
                 i += 9; // Skip "{{segment"
 
                 // Find the end of opening tag }}
                 let mut tag_end = i;
-                while tag_end < chars.len() && !(chars[tag_end] == '}' && chars[tag_end + 1] == '}')
+                while tag_end + 1 < chars.len() && !(chars[tag_end] == '}' && chars[tag_end + 1] == '}')
                 {
                     tag_end += 1;
                 }
 
-                if tag_end >= chars.len() {
+                if tag_end + 1 >= chars.len() {
                     bail!("Unclosed {{{{segment}}}} tag");
                 }
 
                 // Extract parameters from opening tag
                 let params_str: String = chars[i..tag_end].iter().collect();
+                let params_trimmed = params_str.trim();
+
+                // Check if this is a block definition (first non-whitespace char is a quote)
+                // Block definitions have: {{segment "name" ...}}
+                // Helper calls have: {{segment colors.bg colors.fg "text"}}
+                if !params_trimmed.starts_with('"') {
+                    // This is a helper call, not a block definition
+                    // Pass it through unchanged and continue
+                    for c in chars[seg_start..tag_end + 2].iter() {
+                        result.push(*c);
+                    }
+                    i = tag_end + 2;
+                    continue;
+                }
+
                 let segment_def = self.parse_segment_params(&params_str)?;
 
                 // Find {{endsegment}}
