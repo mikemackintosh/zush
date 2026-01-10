@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.3](https://github.com/mikemackintosh/zush/compare/v1.3.2...v1.3.3) (2026-01-10)
+
+### 🐛 Bug Fixes
+
+* install script version parsing for release/* tag format ([05e6757](https://github.com/mikemackintosh/zush/commit/05e6757d63c02316f5ab0ff13b34cca5f165c99d))
+
+### 🔨 Chores
+
+* release ([27ae8e8](https://github.com/mikemackintosh/zush/commit/27ae8e84535a9a9b6a8e5dd443376634e2b1f5e9))
+
 ## [1.3.2](https://github.com/mikemackintosh/zush/compare/v1.3.1...v1.3.2) (2026-01-03)
 
 ### 🐛 Bug Fixes
