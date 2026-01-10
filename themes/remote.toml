@@ -1,0 +1,71 @@
+# Remote SSH Theme
+# Colorful powerline prompt designed for remote/SSH sessions
+# Highly visible colors to distinguish remote from local terminals
+
+name = "remote"
+description = "Colorful powerline theme for SSH/remote sessions"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+# Vibrant color palette - easy to spot you're on a remote host
+pink = "#e26e88"           # User segment
+coral = "#f2a272"          # Path segment
+teal = "#67d4c4"           # Git segment
+green = "#7eca9c"          # Git clean / success
+yellow = "#ebc275"         # Warnings / modified
+orange = "#f2994a"         # Version / info
+blue = "#6bb8d9"           # Time segment
+purple = "#b48ead"         # Modules
+red = "#f38ba8"            # Errors
+
+# Dark colors for text on bright backgrounds
+dark = "#1a1b26"           # Dark text
+darker = "#11111b"         # Darker text
+
+# Light colors
+light = "#cdd6f4"          # Light text
+dimmed = "#6c7086"         # Dimmed text
+
+# SSH indicator
+ssh_bg = "#9d4edd"         # Purple for SSH indicator
+ssh_fg = "#ffffff"         # White text
+
+[symbols]
+# Powerline separators
+sep = ""                  # Right-pointing triangle
+sep_thin = ""             # Thin separator
+pill_left = ""            # Left pill cap
+pill_right = ""           # Right pill cap
+
+# Icons
+ssh = "󰣀"                  # SSH/remote icon
+folder = ""               # Folder icon
+git_branch = ""           # Git branch
+clock = ""                # Clock
+user_icon = ""            # User icon
+server = "󰒋"               # Server icon
+
+[templates]
+# Colorful powerline with SSH indicator
+# Format: [SSH] [user] [directory] [git] [time]
+# Each segment flows with color-matched separators
+
+left = """{{#if is_ssh}}(fg #9d4edd)(/fg)(bg #9d4edd)(fg #ffffff)(bold) 󰣀 (/bold)(/fg)(/bg)(bg #e26e88)(fg #9d4edd)(/fg){{else}}(fg #e26e88)(/fg)(bg #e26e88){{/if}}(fg #1a1b26)(bold)  {{user}} (/bold)(/fg)(/bg)(bg #f2a272)(fg #e26e88)(/fg)(fg #1a1b26)(bold)  {{pwd_short}} (/bold)(/fg)(/bg){{#if git_branch}}(bg #67d4c4)(fg #f2a272)(/fg)(fg #1a1b26)(bold)  {{git_branch}}(/bold){{#if (gt git_staged 0)}} (fg #1a1b26)+{{git_staged}}(/fg){{/if}}{{#if (gt git_modified 0)}} (fg #ebc275)!{{git_modified}}(/fg){{/if}}{{#if (gt git_untracked 0)}} (fg #f38ba8)?{{git_untracked}}(/fg){{/if}}{{#if (gt git_deleted 0)}} (fg #f38ba8)-{{git_deleted}}(/fg){{/if}} (/fg)(/bg)(bg #6bb8d9)(fg #67d4c4)(/fg){{else}}(bg #6bb8d9)(fg #f2a272)(/fg){{/if}}(fg #1a1b26)(bold)  {{time}} (/bold)(/fg)(/bg)(fg #6bb8d9)(/fg)"""
+
+# Right side is empty - everything on left for powerline style
+right = """"""
+
+# Main prompt with arrow on second line
+main = """{{first_line}}
+{{#if (eq exit_code 0)}}(fg #7eca9c)(bold)❯(/bold)(/fg) {{else}}(fg #f38ba8)(bold)[{{exit_code}}] ❯(/bold)(/fg) {{/if}}"""
+
+# Transient prompt - simplified with SSH indicator
+transient = """{{#if is_ssh}}(fg #9d4edd)󰣀(/fg) {{/if}}{{#if (eq exit_code 0)}}(fg #7eca9c)❯(/fg) {{else}}(fg #f38ba8)❯(/fg) {{/if}}"""
+
+# Example output (when connected via SSH):
+#  󰣀   duppster   ~/projects/zush    main +2 !1   16:30
+# ❯
+#
+# Transient:
+# 󰣀 ❯ previous-command
