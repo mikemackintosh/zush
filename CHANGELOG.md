@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0](https://github.com/mikemackintosh/zush/compare/v1.4.0...v1.5.0) (2026-01-10)
+
+### ✨ Features
+
+* **remote:** add hostname and powerline separators ([07ee38f](https://github.com/mikemackintosh/zush/commit/07ee38ff26861b79eb6a3c640abfec507d15aac7))
+
+### 💄 Styles
+
+* cargo fmt ([25b69fe](https://github.com/mikemackintosh/zush/commit/25b69fe78e02ec4713b34bd2a901a6ec1832b7ab))
+
 ## [1.4.0](https://github.com/mikemackintosh/zush/compare/v1.3.4...v1.4.0) (2026-01-10)
 
 ### ✨ Features
