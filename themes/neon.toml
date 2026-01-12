@@ -1,0 +1,36 @@
+# Neon Theme - Electric Nights
+# Pure neon colors that pop off the screen
+# Bright, bold, and impossible to ignore
+
+name = "neon"
+description = "Bright electric neon colors that pop off the screen"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+bg_dark = "#0d0d0d"
+bg_segment = "#1a1a1a"
+neon_green = "#39ff14"
+neon_pink = "#ff1493"
+neon_cyan = "#00ffff"
+neon_yellow = "#ffff00"
+neon_orange = "#ff6600"
+neon_purple = "#bf00ff"
+neon_red = "#ff0040"
+electric_white = "#f0f0f0"
+gray = "#404040"
+fg_dark = "#0d0d0d"
+
+[symbols]
+prompt_arrow = "»"
+git_branch = ""
+lambda = "λ"
+
+[templates]
+main = """{{segment colors.bg_segment colors.neon_cyan " ⚡ "}}{{segment colors.bg_segment colors.neon_yellow time}}{{segment colors.bg_segment colors.neon_cyan " ⚡ "}}{{reset}}{{color colors.neon_purple "▓"}}{{segment colors.neon_green colors.fg_dark " λ "}}{{reset}}{{color colors.neon_green "▓"}}{{segment colors.neon_pink colors.electric_white "  "}}{{segment colors.neon_pink colors.electric_white pwd_short}}{{segment colors.neon_pink colors.electric_white " "}}{{reset}}{{color colors.neon_pink "▓"}}{{#if git_branch}}{{segment colors.neon_cyan colors.fg_dark "  "}}{{segment colors.neon_cyan colors.fg_dark git_branch}}{{#if (gt git_modified 0)}} {{segment colors.neon_cyan colors.neon_orange "●"}}{{segment colors.neon_cyan colors.neon_orange git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{segment colors.neon_cyan colors.neon_green "+"}}{{segment colors.neon_cyan colors.neon_green git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{segment colors.neon_cyan colors.fg_dark "?"}}{{segment colors.neon_cyan colors.fg_dark git_untracked}}{{/if}}{{segment colors.neon_cyan colors.fg_dark " "}}{{reset}}{{color colors.neon_cyan "▓"}}{{/if}}
+{{color colors.gray pwd_short}}
+{{#if (eq exit_code 0)}}{{color colors.neon_green "»"}}{{color colors.neon_cyan "»"}}{{color colors.neon_pink "»"}} {{else}}{{color colors.neon_red "⟨"}}{{color colors.neon_red exit_code}}{{color colors.neon_red "⟩"}} {{color colors.neon_red "»»»"}} {{/if}}"""
+
+transient = """{{color colors.gray time}} {{#if (eq exit_code 0)}}{{color colors.gray "»"}} {{else}}{{color colors.neon_red "»"}} {{/if}}"""
+
+right = ""

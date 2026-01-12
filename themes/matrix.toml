@@ -1,0 +1,37 @@
+# Matrix Theme - Classic Hacker Aesthetic
+# Inspired by The Matrix - green phosphor terminal glow on black
+# Perfect for that authentic hacker feel
+
+name = "matrix"
+description = "The Matrix-inspired green phosphor terminal aesthetic"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+# The Matrix color palette
+bg_dark = "#0d0d0d"
+bg_segment = "#0a1a0a"
+matrix_green = "#00ff41"
+matrix_bright = "#39ff14"
+matrix_dim = "#008f11"
+matrix_dark = "#003b00"
+cyan_glow = "#00ffcc"
+white_glow = "#ccffcc"
+amber = "#ffb000"
+red_alert = "#ff3333"
+gray = "#333333"
+fg_dark = "#001100"
+
+[symbols]
+prompt_arrow = "▶"
+git_branch = ""
+separator = "❱"
+lambda = "λ"
+
+[templates]
+main = """{{segment colors.bg_segment colors.matrix_dim " ⟨ "}}{{segment colors.bg_segment colors.matrix_green time}}{{segment colors.bg_segment colors.matrix_dim " ⟩ "}}{{reset}}{{color colors.matrix_dark "░▒▓"}}{{segment colors.matrix_dark colors.matrix_bright " λ "}}{{reset}}{{color colors.matrix_dark "▓▒░"}} {{color colors.matrix_green pwd_short}}{{#if git_branch}} {{color colors.matrix_dim "⟨"}}{{color colors.cyan_glow ""}} {{color colors.matrix_bright git_branch}}{{#if (gt git_modified 0)}} {{color colors.amber "~"}}{{color colors.amber git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{color colors.matrix_bright "+"}}{{color colors.matrix_bright git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{color colors.matrix_dim "?"}}{{color colors.matrix_dim git_untracked}}{{/if}}{{color colors.matrix_dim "⟩"}}{{/if}}
+{{#if (eq exit_code 0)}}{{color colors.matrix_green "❱"}}{{color colors.matrix_bright "❱"}}{{color colors.white_glow "❱"}} {{else}}{{color colors.red_alert "["}}{{color colors.red_alert exit_code}}{{color colors.red_alert "]"}} {{color colors.red_alert "❱❱❱"}} {{/if}}"""
+
+transient = """{{color colors.matrix_dim time}} {{#if (eq exit_code 0)}}{{color colors.matrix_dim "❱"}} {{else}}{{color colors.red_alert "❱"}} {{/if}}"""
+
+right = ""

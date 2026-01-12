@@ -1,0 +1,35 @@
+# Hacker Elite Theme - Terminal Master
+# Inspired by old-school CRT monitors, amber terminals, and elite hackers
+# A sophisticated blend of green, amber, and red alert colors
+
+name = "hacker"
+description = "Elite hacker terminal with amber CRT vibes and green phosphor"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+bg_terminal = "#0c0c0c"
+bg_segment = "#111111"
+phosphor_green = "#33ff33"
+phosphor_dim = "#1a8f1a"
+amber = "#ffb000"
+amber_dim = "#996600"
+red_alert = "#ff3300"
+cyan_term = "#00cccc"
+gray_term = "#444444"
+dark_green = "#0a3d0a"
+fg_dark = "#0c0c0c"
+
+[symbols]
+prompt_arrow = ">"
+git_branch = ""
+lambda = "#"
+
+[templates]
+main = """{{color colors.phosphor_dim "┌──"}}{{segment colors.dark_green colors.amber " "}}{{segment colors.dark_green colors.amber time}}{{segment colors.dark_green colors.amber " "}}{{reset}}{{color colors.phosphor_dim "──"}}{{segment colors.dark_green colors.phosphor_green " # "}}{{reset}}{{color colors.phosphor_dim "──"}}{{segment colors.dark_green colors.cyan_term "  "}}{{segment colors.dark_green colors.cyan_term pwd_short}}{{segment colors.dark_green colors.cyan_term " "}}{{reset}}{{#if git_branch}}{{color colors.phosphor_dim "──"}}{{segment colors.dark_green colors.amber "  "}}{{segment colors.dark_green colors.amber git_branch}}{{#if (gt git_modified 0)}} {{segment colors.dark_green colors.red_alert "~"}}{{segment colors.dark_green colors.red_alert git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{segment colors.dark_green colors.phosphor_green "+"}}{{segment colors.dark_green colors.phosphor_green git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{segment colors.dark_green colors.amber_dim "?"}}{{segment colors.dark_green colors.amber_dim git_untracked}}{{/if}}{{segment colors.dark_green colors.amber " "}}{{reset}}{{/if}}{{color colors.phosphor_dim "──"}}
+{{color colors.phosphor_dim "└──"}}{{color colors.gray_term "["}}{{color colors.gray_term pwd_short}}{{color colors.gray_term "]"}}
+{{#if (eq exit_code 0)}}{{color colors.phosphor_green ">>>"}} {{else}}{{color colors.red_alert "[ERR:"}}{{color colors.red_alert exit_code}}{{color colors.red_alert "]"}} {{color colors.red_alert ">>>"}} {{/if}}"""
+
+transient = """{{color colors.gray_term time}} {{#if (eq exit_code 0)}}{{color colors.phosphor_dim ">"}} {{else}}{{color colors.red_alert ">"}} {{/if}}"""
+
+right = ""

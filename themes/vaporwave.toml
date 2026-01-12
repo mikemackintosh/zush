@@ -1,0 +1,37 @@
+# Vaporwave Theme - A E S T H E T I C
+# Inspired by 90s nostalgia, VHS glitches, and late-night computing
+# Pastel pinks, teals, and purples with retro vibes
+
+name = "vaporwave"
+description = "90s vaporwave aesthetic with pastel colors and retro vibes"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+bg_dark = "#1a1a2e"
+bg_segment = "#16213e"
+vapor_pink = "#ff71ce"
+vapor_cyan = "#01cdfe"
+vapor_purple = "#b967ff"
+vapor_blue = "#05ffa1"
+vapor_yellow = "#fffb96"
+vhs_red = "#ff6b6b"
+chrome = "#dfe6e9"
+dark_chrome = "#636e72"
+grid_purple = "#6c5ce7"
+white = "#ffffff"
+fg_dark = "#1a1a2e"
+
+[symbols]
+prompt_arrow = "▸"
+git_branch = ""
+lambda = "Ω"
+
+[templates]
+main = """{{segment colors.grid_purple colors.vapor_cyan " ◆ "}}{{segment colors.grid_purple colors.vapor_yellow time}}{{segment colors.grid_purple colors.vapor_cyan " ◆ "}}{{reset}}{{color colors.grid_purple "█"}}{{segment colors.vapor_pink colors.fg_dark " Ω "}}{{reset}}{{color colors.vapor_pink "█"}}{{segment colors.vapor_cyan colors.fg_dark "  "}}{{segment colors.vapor_cyan colors.fg_dark pwd_short}}{{segment colors.vapor_cyan colors.fg_dark " "}}{{reset}}{{color colors.vapor_cyan "█"}}{{#if git_branch}}{{segment colors.vapor_purple colors.white "  "}}{{segment colors.vapor_purple colors.white git_branch}}{{#if (gt git_modified 0)}} {{segment colors.vapor_purple colors.vapor_yellow "✿"}}{{segment colors.vapor_purple colors.vapor_yellow git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{segment colors.vapor_purple colors.vapor_blue "+"}}{{segment colors.vapor_purple colors.vapor_blue git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{segment colors.vapor_purple colors.white "?"}}{{segment colors.vapor_purple colors.white git_untracked}}{{/if}}{{segment colors.vapor_purple colors.white " "}}{{reset}}{{color colors.vapor_purple "█"}}{{/if}}
+{{color colors.dark_chrome "〰〰"}} {{color colors.dark_chrome pwd_short}}
+{{#if (eq exit_code 0)}}{{color colors.vapor_pink "▸"}}{{color colors.vapor_cyan "▸"}}{{color colors.vapor_purple "▸"}} {{else}}{{color colors.vhs_red "⟨"}}{{color colors.vhs_red exit_code}}{{color colors.vhs_red "⟩"}} {{color colors.vhs_red "▸▸▸"}} {{/if}}"""
+
+transient = """{{color colors.dark_chrome time}} {{#if (eq exit_code 0)}}{{color colors.dark_chrome "▸"}} {{else}}{{color colors.vhs_red "▸"}} {{/if}}"""
+
+right = ""

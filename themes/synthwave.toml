@@ -1,0 +1,37 @@
+# Synthwave Theme - 80s Retro Future
+# Inspired by synthwave/outrun aesthetics, sunset grids, and retro futurism
+# Hot pink, purple, orange gradients with chrome accents
+
+name = "synthwave"
+description = "80s retro synthwave aesthetic with sunset colors and chrome"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+bg_dark = "#1a1a2e"
+bg_segment = "#16213e"
+sunset_pink = "#ff6b9d"
+sunset_purple = "#c44bc7"
+sunset_orange = "#ff8c42"
+sunset_yellow = "#ffd700"
+sunset_red = "#ff1744"
+electric_blue = "#00d4ff"
+chrome = "#e0e0e0"
+dark_chrome = "#5a5a7a"
+deep_purple = "#3d1a78"
+white = "#ffffff"
+fg_dark = "#1a1a2e"
+
+[symbols]
+prompt_arrow = "▷"
+git_branch = ""
+lambda = "Λ"
+
+[templates]
+main = """{{segment colors.deep_purple colors.sunset_orange " ◐ "}}{{segment colors.deep_purple colors.sunset_yellow time}}{{segment colors.deep_purple colors.sunset_orange " ◑ "}}{{reset}}{{color colors.deep_purple "█"}}{{segment colors.sunset_pink colors.fg_dark " Λ "}}{{reset}}{{color colors.sunset_pink "█"}}{{segment colors.sunset_purple colors.white "  "}}{{segment colors.sunset_purple colors.white pwd_short}}{{segment colors.sunset_purple colors.white " "}}{{reset}}{{color colors.sunset_purple "█"}}{{#if git_branch}}{{segment colors.electric_blue colors.fg_dark "  "}}{{segment colors.electric_blue colors.fg_dark git_branch}}{{#if (gt git_modified 0)}} {{segment colors.electric_blue colors.sunset_orange "✦"}}{{segment colors.electric_blue colors.sunset_orange git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{segment colors.electric_blue colors.sunset_yellow "+"}}{{segment colors.electric_blue colors.sunset_yellow git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{segment colors.electric_blue colors.fg_dark "?"}}{{segment colors.electric_blue colors.fg_dark git_untracked}}{{/if}}{{segment colors.electric_blue colors.fg_dark " "}}{{reset}}{{color colors.electric_blue "█"}}{{/if}}
+{{color colors.dark_chrome "∿∿∿"}} {{color colors.dark_chrome pwd_short}}
+{{#if (eq exit_code 0)}}{{color colors.sunset_orange "▷"}}{{color colors.sunset_pink "▷"}}{{color colors.sunset_purple "▷"}} {{else}}{{color colors.sunset_red "⟨"}}{{color colors.sunset_red exit_code}}{{color colors.sunset_red "⟩"}} {{color colors.sunset_red "▷▷▷"}} {{/if}}"""
+
+transient = """{{color colors.dark_chrome time}} {{#if (eq exit_code 0)}}{{color colors.dark_chrome "▷"}} {{else}}{{color colors.sunset_red "▷"}} {{/if}}"""
+
+right = ""
