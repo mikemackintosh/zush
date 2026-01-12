@@ -1,0 +1,40 @@
+# Aurora Theme - Northern Lights Magic
+# Inspired by the Aurora Borealis with flowing greens, purples, and blues
+# Ethereal and calming with nature-inspired colors
+
+name = "aurora"
+description = "Aurora Borealis inspired theme with flowing ethereal colors"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+bg_dark = "#0b0f14"
+bg_segment = "#101820"
+aurora_green = "#78ffd6"
+aurora_teal = "#00d4aa"
+aurora_blue = "#007cf0"
+aurora_purple = "#a855f7"
+aurora_pink = "#ff7eb6"
+aurora_cyan = "#7afcff"
+ice_white = "#e8f4f8"
+snow = "#f0f8ff"
+starlight = "#c9d1d9"
+midnight = "#161b22"
+frost = "#88c0d0"
+glacier = "#5e81ac"
+red_dawn = "#ff6b6b"
+fg_dark = "#0b0f14"
+
+[symbols]
+prompt_arrow = "❯"
+git_branch = ""
+lambda = "✧"
+
+[templates]
+main = """{{segment colors.midnight colors.aurora_teal " ✦ "}}{{segment colors.midnight colors.ice_white time}}{{segment colors.midnight colors.aurora_teal " ✦ "}}{{reset}}{{color colors.midnight "▓"}}{{segment colors.aurora_green colors.fg_dark " ✧ "}}{{reset}}{{color colors.aurora_green "░"}}{{segment colors.aurora_blue colors.ice_white "  "}}{{segment colors.aurora_blue colors.ice_white pwd_short}}{{segment colors.aurora_blue colors.ice_white " "}}{{reset}}{{color colors.aurora_blue "░"}}{{#if git_branch}}{{segment colors.aurora_purple colors.snow "  "}}{{segment colors.aurora_purple colors.snow git_branch}}{{#if (gt git_modified 0)}} {{segment colors.aurora_purple colors.aurora_pink "◇"}}{{segment colors.aurora_purple colors.aurora_pink git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{segment colors.aurora_purple colors.aurora_cyan "+"}}{{segment colors.aurora_purple colors.aurora_cyan git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{segment colors.aurora_purple colors.starlight "?"}}{{segment colors.aurora_purple colors.starlight git_untracked}}{{/if}}{{segment colors.aurora_purple colors.snow " "}}{{reset}}{{color colors.aurora_purple "░"}}{{/if}}
+{{color colors.glacier "～～"}} {{color colors.glacier pwd_short}}
+{{#if (eq exit_code 0)}}{{color colors.aurora_green "❯"}}{{color colors.aurora_teal "❯"}}{{color colors.aurora_cyan "❯"}} {{else}}{{color colors.red_dawn "["}}{{color colors.red_dawn exit_code}}{{color colors.red_dawn "]"}} {{color colors.red_dawn "❯❯❯"}} {{/if}}"""
+
+transient = """{{color colors.glacier time}} {{#if (eq exit_code 0)}}{{color colors.glacier "❯"}} {{else}}{{color colors.red_dawn "❯"}} {{/if}}"""
+
+right = ""

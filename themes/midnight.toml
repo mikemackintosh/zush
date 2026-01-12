@@ -1,0 +1,42 @@
+# Midnight Theme - Dark Purple Elegance
+# Split prompt with inverted triangle separators
+# Deep purples, blues, and starlight accents
+
+name = "midnight"
+description = "Elegant dark purple theme with inverted triangle separators"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+bg_void = "#0c0a1d"
+bg_user = "#7c3aed"
+bg_pwd = "#6366f1"
+bg_git = "#8b5cf6"
+bg_time = "#1e1b4b"
+bg_duration = "#4c1d95"
+fg_dark = "#0c0a1d"
+fg_light = "#ede9fe"
+starlight = "#c4b5fd"
+moonbeam = "#a78bfa"
+twilight = "#818cf8"
+nebula_pink = "#f472b6"
+warning = "#fcd34d"
+error = "#fb7185"
+success = "#a3e635"
+
+[symbols]
+sep_right = ""
+sep_left = ""
+git = ""
+star = "✦"
+
+[templates]
+left = """{{fg colors.bg_user}}{{bg colors.bg_user}}{{fg colors.fg_light}} ✦ {{user}} {{reset}}{{fg colors.bg_pwd}}{{bg colors.bg_user}}{{reset}}{{bg colors.bg_pwd}}{{fg colors.fg_light}}  {{pwd_short}} {{reset}}{{#if git_branch}}{{fg colors.bg_git}}{{bg colors.bg_pwd}}{{reset}}{{bg colors.bg_git}}{{fg colors.fg_light}}  {{git_branch}}{{#if (gt git_modified 0)}} {{fg colors.nebula_pink}}✧{{git_modified}}{{fg colors.fg_light}}{{/if}}{{#if (gt git_staged 0)}} {{fg colors.success}}+{{git_staged}}{{fg colors.fg_light}}{{/if}}{{#if (gt git_untracked 0)}} ?{{git_untracked}}{{/if}} {{reset}}{{fg colors.bg_git}}{{else}}{{fg colors.bg_pwd}}{{/if}}{{reset}}"""
+
+right = """{{#if (gt execution_time_ms 1000)}}{{bg colors.bg_duration}}{{fg colors.bg_duration}}{{reset}}{{bg colors.bg_duration}}{{fg colors.nebula_pink}}  {{execution_time_s}}s {{reset}}{{/if}}{{bg colors.bg_time}}{{fg colors.bg_time}}{{reset}}{{bg colors.bg_time}}{{fg colors.starlight}} ✦ {{time}} {{reset}}"""
+
+main = """{{first_line}}
+{{color colors.twilight "✦"}} {{color colors.moonbeam pwd_short}}
+{{#if (eq exit_code 0)}}{{color colors.moonbeam "❯"}}{{color colors.twilight "❯"}}{{color colors.starlight "❯"}} {{else}}{{color colors.error "["}}{{color colors.error exit_code}}{{color colors.error "]"}} {{color colors.error "❯❯❯"}} {{/if}}"""
+
+transient = """{{color colors.twilight time}} {{#if (eq exit_code 0)}}{{color colors.twilight "❯"}} {{else}}{{color colors.error "❯"}} {{/if}}"""

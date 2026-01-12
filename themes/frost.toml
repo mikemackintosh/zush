@@ -1,0 +1,40 @@
+# Frost Theme - Icy Cool with Pill Separators
+# Clean, modern look with rounded pill-style segments
+# Cool blues and icy whites
+
+name = "frost"
+description = "Icy cool theme with pill-shaped segments"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+bg_dark = "#0f172a"
+bg_user = "#0ea5e9"
+bg_pwd = "#06b6d4"
+bg_git = "#22d3ee"
+bg_time = "#1e3a5f"
+fg_dark = "#0f172a"
+fg_light = "#f0f9ff"
+ice_blue = "#7dd3fc"
+frost_white = "#e0f2fe"
+glacier = "#38bdf8"
+warning = "#fbbf24"
+error = "#f87171"
+success = "#4ade80"
+
+[symbols]
+sep_right = ""
+sep_left = ""
+git = ""
+folder = ""
+clock = ""
+
+[templates]
+left = """{{bg colors.bg_user}}{{fg colors.fg_dark}}  {{user}} {{reset}}{{fg colors.bg_user}}{{bg colors.bg_pwd}}{{reset}}{{bg colors.bg_pwd}}{{fg colors.fg_dark}}  {{pwd_short}} {{reset}}{{fg colors.bg_pwd}}{{#if git_branch}}{{bg colors.bg_git}}{{reset}}{{bg colors.bg_git}}{{fg colors.fg_dark}}  {{git_branch}}{{#if (gt git_modified 0)}} {{fg colors.warning}}~{{git_modified}}{{fg colors.fg_dark}}{{/if}}{{#if (gt git_staged 0)}} {{fg colors.success}}+{{git_staged}}{{fg colors.fg_dark}}{{/if}}{{#if (gt git_untracked 0)}} ?{{git_untracked}}{{/if}} {{reset}}{{fg colors.bg_git}}{{/if}}{{reset}}"""
+
+right = """{{fg colors.bg_time}}{{bg colors.bg_time}}{{fg colors.ice_blue}}  {{time}} {{reset}}"""
+
+main = """{{first_line}}
+{{#if (eq exit_code 0)}}{{color colors.glacier "❯"}} {{else}}{{color colors.error "["}}{{color colors.error exit_code}}{{color colors.error "] ❯"}} {{/if}}"""
+
+transient = """{{color colors.ice_blue time}} {{#if (eq exit_code 0)}}{{color colors.glacier "❯"}} {{else}}{{color colors.error "❯"}} {{/if}}"""

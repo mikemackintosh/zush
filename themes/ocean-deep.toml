@@ -1,0 +1,45 @@
+# Ocean Deep Theme - Bioluminescent Deep Sea
+# Split prompt with pill separators and underwater glow
+# Deep blues, teals, and bioluminescent accents
+
+name = "ocean-deep"
+description = "Deep sea bioluminescent theme with pill separators"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+bg_abyss = "#020617"
+bg_user = "#0369a1"
+bg_pwd = "#0891b2"
+bg_git = "#14b8a6"
+bg_time = "#164e63"
+bg_duration = "#155e75"
+fg_dark = "#020617"
+fg_light = "#e0f2fe"
+biolum_cyan = "#22d3ee"
+biolum_green = "#2dd4bf"
+biolum_blue = "#38bdf8"
+deep_purple = "#7c3aed"
+coral = "#fb7185"
+warning = "#fcd34d"
+error = "#f87171"
+success = "#34d399"
+
+[symbols]
+sep_right = ""
+sep_left = ""
+git = ""
+folder = ""
+clock = ""
+wave = "~"
+
+[templates]
+left = """{{bg colors.bg_user}}{{fg colors.fg_light}}  {{user}} {{reset}}{{fg colors.bg_user}}{{bg colors.bg_pwd}}{{reset}}{{bg colors.bg_pwd}}{{fg colors.fg_dark}}  {{pwd_short}} {{reset}}{{fg colors.bg_pwd}}{{#if git_branch}}{{bg colors.bg_git}}{{reset}}{{bg colors.bg_git}}{{fg colors.fg_dark}}  {{git_branch}}{{#if (gt git_modified 0)}} {{fg colors.coral}}≋{{git_modified}}{{fg colors.fg_dark}}{{/if}}{{#if (gt git_staged 0)}} {{fg colors.biolum_green}}+{{git_staged}}{{fg colors.fg_dark}}{{/if}}{{#if (gt git_untracked 0)}} ?{{git_untracked}}{{/if}} {{reset}}{{fg colors.bg_git}}{{/if}}{{reset}}"""
+
+right = """{{#if (gt execution_time_ms 1000)}}{{fg colors.coral}}{{bg colors.coral}}{{fg colors.fg_dark}}  {{execution_time_s}}s {{reset}}{{/if}}{{fg colors.bg_time}}{{bg colors.bg_time}}{{fg colors.biolum_cyan}}  {{time}} {{reset}}"""
+
+main = """{{first_line}}
+{{color colors.biolum_blue "≋≋"}} {{color colors.deep_purple pwd_short}}
+{{#if (eq exit_code 0)}}{{color colors.biolum_cyan "❯"}}{{color colors.biolum_green "❯"}}{{color colors.biolum_blue "❯"}} {{else}}{{color colors.coral "["}}{{color colors.coral exit_code}}{{color colors.coral "]"}} {{color colors.coral "❯❯❯"}} {{/if}}"""
+
+transient = """{{color colors.deep_purple time}} {{#if (eq exit_code 0)}}{{color colors.deep_purple "❯"}} {{else}}{{color colors.coral "❯"}} {{/if}}"""

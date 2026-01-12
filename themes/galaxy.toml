@@ -1,0 +1,39 @@
+# Galaxy Theme - Cosmic Wonder
+# Inspired by deep space, nebulae, and the cosmos
+# Deep purples, blues, with stardust and cosmic highlights
+
+name = "galaxy"
+description = "Deep space cosmic theme with nebula colors and stardust"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+bg_void = "#0a0a12"
+bg_nebula = "#12101f"
+nebula_purple = "#9d4edd"
+nebula_pink = "#ff6b9d"
+nebula_blue = "#4361ee"
+cosmic_cyan = "#4cc9f0"
+stardust = "#ffd93d"
+starlight = "#e2e8f0"
+supernova = "#ff4d6d"
+pulsar_green = "#7ae582"
+nova_orange = "#ff8c42"
+dark_matter = "#1a1a2e"
+comet = "#a5b4fc"
+white = "#ffffff"
+fg_dark = "#0a0a12"
+
+[symbols]
+prompt_arrow = "⟩"
+git_branch = ""
+lambda = "✦"
+
+[templates]
+main = """{{segment colors.dark_matter colors.stardust " ★ "}}{{segment colors.dark_matter colors.comet time}}{{segment colors.dark_matter colors.stardust " ★ "}}{{reset}}{{color colors.dark_matter "▓"}}{{segment colors.nebula_purple colors.white " ✦ "}}{{reset}}{{color colors.nebula_purple "░"}}{{segment colors.nebula_blue colors.starlight "  "}}{{segment colors.nebula_blue colors.starlight pwd_short}}{{segment colors.nebula_blue colors.starlight " "}}{{reset}}{{color colors.nebula_blue "░"}}{{#if git_branch}}{{segment colors.cosmic_cyan colors.fg_dark "  "}}{{segment colors.cosmic_cyan colors.fg_dark git_branch}}{{#if (gt git_modified 0)}} {{segment colors.cosmic_cyan colors.nova_orange "☄"}}{{segment colors.cosmic_cyan colors.nova_orange git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{segment colors.cosmic_cyan colors.pulsar_green "+"}}{{segment colors.cosmic_cyan colors.pulsar_green git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{segment colors.cosmic_cyan colors.fg_dark "?"}}{{segment colors.cosmic_cyan colors.fg_dark git_untracked}}{{/if}}{{segment colors.cosmic_cyan colors.fg_dark " "}}{{reset}}{{color colors.cosmic_cyan "░"}}{{/if}}
+{{color colors.comet "✧"}} {{color colors.comet pwd_short}}
+{{#if (eq exit_code 0)}}{{color colors.nebula_purple "⟩"}}{{color colors.nebula_pink "⟩"}}{{color colors.cosmic_cyan "⟩"}} {{else}}{{color colors.supernova "☄"}} {{color colors.supernova exit_code}} {{color colors.supernova "⟩⟩⟩"}} {{/if}}"""
+
+transient = """{{color colors.comet time}} {{#if (eq exit_code 0)}}{{color colors.comet "⟩"}} {{else}}{{color colors.supernova "⟩"}} {{/if}}"""
+
+right = ""
