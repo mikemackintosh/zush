@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0](https://github.com/mikemackintosh/zush/compare/v1.5.2...v1.6.0) (2026-01-12)
+
+### ✨ Features
+
+* add new themes ([4a622da](https://github.com/mikemackintosh/zush/commit/4a622da8fbef53a9ee02b077f7d4da1ae92904f3))
+* add new themes ([29d37b0](https://github.com/mikemackintosh/zush/commit/29d37b038d0975c6992158c2daf286e58db84008))
+
 ## [1.5.2](https://github.com/mikemackintosh/zush/compare/v1.5.1...v1.5.2) (2026-01-12)
 
 ### 🐛 Bug Fixes
