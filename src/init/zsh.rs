@@ -45,6 +45,26 @@ typeset -g ZUSH_PROMPT_NEWLINE_BEFORE="${ZUSH_PROMPT_NEWLINE_BEFORE:-1}"
 # Example: export ZUSH_PROMPT_NEWLINE_AFTER=1
 typeset -g ZUSH_PROMPT_NEWLINE_AFTER="${ZUSH_PROMPT_NEWLINE_AFTER:-0}"
 
+# ============================================================================
+# HISTORY CONFIGURATION - Ensure history is saved and shared across sessions
+# These are set only if not already configured, to avoid overriding user prefs
+# ============================================================================
+
+# Set history file location if not set
+[[ -z "$HISTFILE" ]] && export HISTFILE="${HOME}/.zsh_history"
+
+# Set reasonable history sizes if not set or too small
+[[ -z "$HISTSIZE" || "$HISTSIZE" -lt 1000 ]] && export HISTSIZE=50000
+[[ -z "$SAVEHIST" || "$SAVEHIST" -lt 1000 ]] && export SAVEHIST=50000
+
+# History options - append and share so sessions don't overwrite each other
+setopt INC_APPEND_HISTORY     # Add commands immediately (not at shell exit)
+setopt SHARE_HISTORY          # Share history between all sessions
+setopt HIST_IGNORE_DUPS       # Ignore duplicated commands in history list
+setopt HIST_IGNORE_SPACE      # Ignore commands that start with space
+setopt HIST_EXPIRE_DUPS_FIRST # Delete duplicates first when HISTFILE exceeds HISTSIZE
+setopt EXTENDED_HISTORY       # Record timestamp in history
+
 # Function to switch themes dynamically
 zush-theme() {
     local theme_name="$1"
