@@ -1,0 +1,48 @@
+# Boulevard Theme - Sunset City Lights
+# Split prompt with mixed separators (pills left, inverted right)
+# Warm sunset gradient from orange to purple
+
+name = "boulevard"
+description = "Sunset boulevard theme with mixed pill and triangle separators"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+bg_dark = "#18181b"
+bg_user = "#f97316"
+bg_pwd = "#ec4899"
+bg_git = "#d946ef"
+bg_time = "#581c87"
+bg_duration = "#be185d"
+fg_dark = "#18181b"
+fg_light = "#fdf4ff"
+sunset_orange = "#fb923c"
+sunset_pink = "#f472b6"
+sunset_purple = "#c084fc"
+neon_sign = "#fef08a"
+palm_silhouette = "#292524"
+warning = "#fcd34d"
+error = "#fca5a5"
+success = "#86efac"
+
+[symbols]
+pill_right = ""
+pill_left = ""
+tri_right = ""
+tri_left = ""
+git = ""
+palm = ""
+sun = "◐"
+
+[templates]
+# Left uses pills for a smooth modern look
+left = """{{bg colors.bg_user}}{{fg colors.fg_light}} ◐ {{user}} {{reset}}{{fg colors.bg_user}}{{bg colors.bg_pwd}}{{reset}}{{bg colors.bg_pwd}}{{fg colors.fg_light}}  {{pwd_short}} {{reset}}{{fg colors.bg_pwd}}{{#if git_branch}}{{bg colors.bg_git}}{{reset}}{{bg colors.bg_git}}{{fg colors.fg_light}}  {{git_branch}}{{#if (gt git_modified 0)}} {{fg colors.neon_sign}}✦{{git_modified}}{{fg colors.fg_light}}{{/if}}{{#if (gt git_staged 0)}} {{fg colors.success}}+{{git_staged}}{{fg colors.fg_light}}{{/if}}{{#if (gt git_untracked 0)}} ?{{git_untracked}}{{/if}} {{reset}}{{fg colors.bg_git}}{{/if}}{{reset}}"""
+
+# Right uses inverted triangles for contrast
+right = """{{#if (gt execution_time_ms 1000)}}{{bg colors.bg_duration}}{{fg colors.bg_duration}}{{reset}}{{bg colors.bg_duration}}{{fg colors.neon_sign}}  {{execution_time_s}}s {{reset}}{{/if}}{{bg colors.bg_time}}{{fg colors.bg_time}}{{reset}}{{bg colors.bg_time}}{{fg colors.sunset_purple}}  {{time}} {{reset}}"""
+
+main = """{{first_line}}
+{{color colors.palm_silhouette "───"}} {{color colors.sunset_pink pwd_short}}
+{{#if (eq exit_code 0)}}{{color colors.sunset_orange "❯"}}{{color colors.sunset_pink "❯"}}{{color colors.sunset_purple "❯"}} {{else}}{{color colors.error "["}}{{color colors.error exit_code}}{{color colors.error "]"}} {{color colors.error "❯❯❯"}} {{/if}}"""
+
+transient = """{{color colors.palm_silhouette time}} {{#if (eq exit_code 0)}}{{color colors.palm_silhouette "❯"}} {{else}}{{color colors.error "❯"}} {{/if}}"""

@@ -1,0 +1,40 @@
+# Ember Theme - Fire Colors with Inverted Triangle Separators
+# Warm, fiery aesthetic with reverse powerline arrows
+# Oranges, reds, and golden yellows
+
+name = "ember"
+description = "Fiery theme with inverted triangle separators"
+author = "Zush"
+version = "1.0.0"
+
+[colors]
+bg_dark = "#1c1917"
+bg_user = "#dc2626"
+bg_pwd = "#ea580c"
+bg_git = "#f59e0b"
+bg_time = "#78350f"
+fg_dark = "#1c1917"
+fg_light = "#fef3c7"
+flame_orange = "#fb923c"
+ember_red = "#ef4444"
+ash_gray = "#57534e"
+gold = "#fcd34d"
+warning = "#fbbf24"
+error = "#dc2626"
+success = "#84cc16"
+
+[symbols]
+sep_right = ""
+sep_left = ""
+git = ""
+folder = ""
+
+[templates]
+left = """{{fg colors.bg_user}}{{bg colors.bg_user}}{{fg colors.fg_light}}  {{user}} {{reset}}{{fg colors.bg_pwd}}{{bg colors.bg_user}}{{reset}}{{bg colors.bg_pwd}}{{fg colors.fg_dark}}  {{pwd_short}} {{reset}}{{#if git_branch}}{{fg colors.bg_git}}{{bg colors.bg_pwd}}{{reset}}{{bg colors.bg_git}}{{fg colors.fg_dark}}  {{git_branch}}{{#if (gt git_modified 0)}} {{fg colors.ember_red}}~{{git_modified}}{{fg colors.fg_dark}}{{/if}}{{#if (gt git_staged 0)}} {{fg colors.success}}+{{git_staged}}{{fg colors.fg_dark}}{{/if}}{{#if (gt git_untracked 0)}} ?{{git_untracked}}{{/if}} {{reset}}{{fg colors.bg_git}}{{else}}{{fg colors.bg_pwd}}{{/if}}{{reset}}"""
+
+right = """{{bg colors.bg_time}}{{fg colors.bg_time}}{{reset}}{{bg colors.bg_time}}{{fg colors.gold}}  {{time}} {{reset}}"""
+
+main = """{{first_line}}
+{{#if (eq exit_code 0)}}{{color colors.flame_orange "❯"}} {{else}}{{color colors.ember_red "["}}{{color colors.ember_red exit_code}}{{color colors.ember_red "] ❯"}} {{/if}}"""
+
+transient = """{{color colors.ash_gray time}} {{#if (eq exit_code 0)}}{{color colors.ash_gray "❯"}} {{else}}{{color colors.ember_red "❯"}} {{/if}}"""
