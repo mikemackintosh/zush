@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.2](https://github.com/mikemackintosh/zush/compare/v1.5.1...v1.5.2) (2026-01-12)
+
+### 🐛 Bug Fixes
+
+* init history when unset ([b2453db](https://github.com/mikemackintosh/zush/commit/b2453db660952f4550862d6f7536744f211e4b42))
+
 ## [1.5.1](https://github.com/mikemackintosh/zush/compare/v1.5.0...v1.5.1) (2026-01-10)
 
 ### 🐛 Bug Fixes
