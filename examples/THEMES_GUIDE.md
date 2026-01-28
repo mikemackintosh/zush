@@ -28,11 +28,11 @@ Add to your `~/.zshrc`:
 # Load the theme switcher
 source /path/to/zush-prompt-rust/zush-theme.zsh
 
-# Initialize Zush prompt
-source <(zush-prompt init zsh)
+# Set default theme (optional, before init)
+export ZUSH_THEME="dcs"
 
-# Set default theme (optional)
-export ZUSH_CURRENT_THEME="dcs"
+# Initialize Zush prompt
+eval "$(zush-prompt init zsh)"
 ```
 
 ## Usage

@@ -41,16 +41,20 @@ curl -fsSL https://raw.githubusercontent.com/mikemackintosh/zush/main/scripts/in
 
 Then add to your `~/.zshrc`:
 
-```bash
+```zsh
+# Add zush-prompt to PATH (if installed to ~/.local/bin)
 export PATH="$HOME/.local/bin:$PATH"
-export ZUSH_CURRENT_THEME="split"  # or: minimal, powerline, dcs, starship, catppuccin
-source ~/.config/zush/zush.zsh
-[ -f ~/.config/zush/zush-theme.zsh ] && source ~/.config/zush/zush-theme.zsh
+
+# Optional: Set your preferred theme
+export ZUSH_THEME="split"  # or: minimal, powerline, dcs, starship, catppuccin
+
+# Initialize zush
+eval "$(zush-prompt init zsh)"
 ```
 
 Reload your shell:
 ```bash
-source ~/.zshrc
+exec zsh
 ```
 
 ### Alternative: Build from Source
@@ -80,13 +84,13 @@ Zush uses a **dual configuration system**:
 
 ### Environment Variables (Runtime Behavior)
 
-Set in `.zshrc` **before** sourcing the integration script:
+Set in `.zshrc` **before** the `eval` line:
 
-```bash
-export ZUSH_CURRENT_THEME="split"           # Which theme to use
+```zsh
+export ZUSH_THEME="split"                   # Which theme to use
 export ZUSH_PROMPT_NEWLINE_BEFORE=1         # Add blank line before prompt
 export ZUSH_PROMPT_NEWLINE_AFTER=0          # Add blank line after prompt
-export ZUSH_PROMPT_BIN="~/.local/bin/zush-prompt"
+export ZUSH_PROMPT_BIN="$HOME/.local/bin/zush-prompt"  # Custom binary path
 ```
 
 ### TOML Files (Visual Appearance)
@@ -129,7 +133,7 @@ transient = """{{#if (eq exit_code 0)}}{{color colors.green "❯"}} {{else}}{{co
 | Change symbols | Theme TOML → `[symbols]` |
 | Change layout | Theme TOML → `[templates]` |
 | Add spacing | `.zshrc` → `ZUSH_PROMPT_NEWLINE_BEFORE` |
-| Switch theme | `.zshrc` → `ZUSH_CURRENT_THEME` or `zush-theme <name>` |
+| Switch theme | `.zshrc` → `ZUSH_THEME` or `zush-theme <name>` |
 
 ## Built-in Themes
 
@@ -389,9 +393,9 @@ Check hooks are installed:
 add-zsh-hook -L | grep zush
 ```
 
-Should show `zush_preexec` and `zush_precmd`. If missing:
-```bash
-source ~/.config/zush/zush.zsh
+Should show `zush_preexec` and `zush_precmd`. If missing, ensure your `.zshrc` has:
+```zsh
+eval "$(zush-prompt init zsh)"
 ```
 
 ### Theme not found

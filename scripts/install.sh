@@ -147,14 +147,6 @@ main() {
         success "Themes installed"
     fi
 
-    # Generate init script
-    info "Generating shell integration..."
-    "$INSTALL_DIR/zush-prompt" init zsh > "$CONFIG_DIR/zush.zsh"
-
-    # Download theme switcher
-    download "https://raw.githubusercontent.com/$REPO/main/zush-theme.zsh" \
-             "$CONFIG_DIR/zush-theme.zsh" 2>/dev/null || true
-
     # Check if PATH needs updating
     local needs_path=0
     if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
@@ -172,13 +164,12 @@ main() {
     if [ $needs_path -eq 1 ]; then
         echo "export PATH=\"$INSTALL_DIR:\$PATH\""
     fi
-    echo "export ZUSH_CURRENT_THEME=\"split\"  # or: minimal, powerline, dcs, starship, catppuccin"
-    echo "source $CONFIG_DIR/zush.zsh"
-    echo "[ -f $CONFIG_DIR/zush-theme.zsh ] && source $CONFIG_DIR/zush-theme.zsh"
+    echo "export ZUSH_THEME=\"split\"  # or: minimal, powerline, dcs, starship, catppuccin"
+    echo 'eval "$(zush-prompt init zsh)"'
     echo ""
 
     info "Then reload your shell:"
-    echo "  source ~/.zshrc"
+    echo "  exec zsh"
     echo ""
 
     info "Theme switching:"

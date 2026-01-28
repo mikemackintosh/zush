@@ -55,16 +55,12 @@ if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
     echo "export PATH=\"$INSTALL_DIR:\$PATH\"" >> "$ZSH_CONFIG"
 fi
 
-# Generate Zsh integration
-echo -e "${YELLOW}🔗 Generating Zsh integration...${NC}"
-"$INSTALL_DIR/zush-prompt" init zsh > "$CONFIG_DIR/zush.zsh"
-
 # Add to .zshrc
-if ! grep -q "source.*zush.zsh" "$ZSH_CONFIG" 2>/dev/null; then
+if ! grep -q 'zush-prompt init zsh' "$ZSH_CONFIG" 2>/dev/null; then
     echo -e "${YELLOW}✏️  Adding Zush to .zshrc...${NC}"
     echo "" >> "$ZSH_CONFIG"
     echo "# Zush Prompt Integration" >> "$ZSH_CONFIG"
-    echo "source $CONFIG_DIR/zush.zsh" >> "$ZSH_CONFIG"
+    echo 'eval "$(zush-prompt init zsh)"' >> "$ZSH_CONFIG"
 else
     echo -e "${BLUE}ℹ️  Zush already in .zshrc, skipping...${NC}"
 fi
@@ -73,9 +69,12 @@ fi
 echo -e "${GREEN}✅ Zush Prompt installed successfully!${NC}"
 echo ""
 echo -e "${BLUE}To get started:${NC}"
-echo "  1. Edit your configuration: $CONFIG_DIR/config.toml"
-echo "  2. Reload your shell: source ~/.zshrc"
-echo "  3. Or start a new terminal session"
+echo "  1. Reload your shell: exec zsh"
+echo "  2. Or start a new terminal session"
+echo ""
+echo -e "${BLUE}Theme switching:${NC}"
+echo "  zush-theme minimal    # Switch to minimal theme"
+echo "  zush-theme list       # List all themes"
 echo ""
 echo -e "${BLUE}Available commands:${NC}"
 echo "  zush-prompt config        # Print example configuration"
