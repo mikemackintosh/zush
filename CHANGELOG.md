@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0](https://github.com/mikemackintosh/zush/compare/v1.6.3...v1.7.0) (2026-01-28)
+
+### ✨ Features
+
+* **themes:** dunkin ([49ff953](https://github.com/mikemackintosh/zush/commit/49ff953deca48fb6d0fa5b2e2fe1f0a8733e091b))
+
+### 🔨 Chores
+
+* **version:** add version sub command ([e57035a](https://github.com/mikemackintosh/zush/commit/e57035a71295124aeb84e4a95150ac361cc55668))
+
 ## [1.6.3](https://github.com/mikemackintosh/zush/compare/v1.6.2...v1.6.3) (2026-01-28)
 
 ### 🐛 Bug Fixes
