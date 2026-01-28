@@ -4,7 +4,6 @@
 // Provides a safe, sandboxed API for context-aware prompt modules
 
 use anyhow::Result;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 pub mod docker;
@@ -43,9 +42,6 @@ pub struct ModuleContext {
     /// Home directory
     pub home: PathBuf,
 
-    /// Environment variables (read-only)
-    pub env: HashMap<String, String>,
-
     /// Sandboxed filesystem access
     pub fs: SandboxedFs,
 }
@@ -56,23 +52,20 @@ impl ModuleContext {
         let pwd = std::env::current_dir()?;
         let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
 
-        // Collect environment variables
-        let env: HashMap<String, String> = std::env::vars().collect();
-
         // Create sandboxed filesystem with allowed paths
         let fs = SandboxedFs::new(vec![pwd.clone(), home.clone()]);
 
-        Ok(Self { pwd, home, env, fs })
+        Ok(Self { pwd, home, fs })
     }
 
-    /// Check if an environment variable exists
+    /// Check if an environment variable exists (lazy lookup)
     pub fn has_env(&self, key: &str) -> bool {
-        self.env.contains_key(key)
+        std::env::var(key).is_ok()
     }
 
-    /// Get an environment variable
-    pub fn get_env(&self, key: &str) -> Option<&str> {
-        self.env.get(key).map(|s| s.as_str())
+    /// Get an environment variable (lazy lookup - fetches on demand)
+    pub fn get_env(&self, key: &str) -> Option<String> {
+        std::env::var(key).ok()
     }
 }
 
@@ -349,7 +342,8 @@ mod tests {
 
         assert!(context.pwd.exists());
         assert!(context.home.exists());
-        assert!(!context.env.is_empty());
+        // Test lazy env lookup works
+        assert!(context.has_env("PATH")); // PATH should exist on all systems
     }
 
     #[test]

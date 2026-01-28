@@ -105,6 +105,11 @@ fn render_prompt(
         None
     };
 
+    // Parse config TOML once upfront (if it exists) to avoid double-parsing
+    let config_parsed: Option<toml::Value> = config_str
+        .as_ref()
+        .and_then(|s| toml::from_str(s).ok());
+
     // Determine which theme to load
     // Priority: CLI flag > ZUSH_THEME env var > config file
     let theme_str = if let Some(theme_name) = &cli.theme {
@@ -113,14 +118,10 @@ fn render_prompt(
     } else if let Ok(theme_name) = std::env::var("ZUSH_THEME") {
         // Environment variable is second priority
         load_theme(&theme_name).ok()
-    } else if let Some(config) = &config_str {
-        // Parse config to get theme name
-        if let Ok(parsed) = toml::from_str::<toml::Value>(config) {
-            if let Some(theme_name) = parsed.get("theme").and_then(|v| v.as_str()) {
-                load_theme(theme_name).ok()
-            } else {
-                None
-            }
+    } else if let Some(ref parsed) = config_parsed {
+        // Use already-parsed config to get theme name
+        if let Some(theme_name) = parsed.get("theme").and_then(|v| v.as_str()) {
+            load_theme(theme_name).ok()
         } else {
             None
         }
@@ -131,12 +132,14 @@ fn render_prompt(
     // Create template engine
     let mut engine = TemplateEngine::new()?;
 
-    // Parse theme/config TOML once and reuse
-    let source_str = theme_str
-        .as_ref()
-        .or(config_str.as_ref())
-        .map(|s| s.as_str());
-    let toml_parser = toml_helpers::TomlParser::new(source_str);
+    // Create TOML parser - reuse already-parsed config when possible
+    let toml_parser = if let Some(ref theme) = theme_str {
+        // Theme needs to be parsed (it's a separate file)
+        toml_helpers::TomlParser::new(Some(theme.as_str()))
+    } else {
+        // Reuse already-parsed config (avoids double-parsing)
+        toml_helpers::TomlParser::from_parsed(config_parsed.clone())
+    };
 
     // Extract colors for preprocessing (allows templates to use named colors)
     let colors_for_preprocessing = toml_parser.extract_colors();

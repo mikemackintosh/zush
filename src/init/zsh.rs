@@ -25,13 +25,13 @@ zmodload zsh/datetime
 # Example: export ZUSH_PROMPT_BIN="$HOME/.local/bin/zush-prompt"
 ZUSH_PROMPT_BIN="${ZUSH_PROMPT_BIN:-zush-prompt}"
 
-# ZUSH_CURRENT_THEME - Which theme to use (optional)
+# ZUSH_THEME - Which theme to use (optional)
 # Default: Uses theme from ~/.config/zush/config.toml, or "minimal" if not set
 # Options: dcs, minimal, powerline, split, or path to custom theme
-# Example: export ZUSH_CURRENT_THEME="powerline"
+# Example: export ZUSH_THEME="powerline"
 # Runtime: Use `zush-theme <name>` to switch themes
 # Note: Only set this if you want to override config.toml's theme setting
-typeset -g ZUSH_CURRENT_THEME="${ZUSH_CURRENT_THEME:-}"
+typeset -g ZUSH_THEME="${ZUSH_THEME:-}"
 
 # ZUSH_PROMPT_NEWLINE_BEFORE - Add blank line before prompt (after command output)
 # Default: 1 (enabled)
@@ -71,7 +71,7 @@ zush-theme() {
 
     # If no argument, show current theme and available themes
     if [[ -z "$theme_name" ]]; then
-        echo "Current theme: ${ZUSH_CURRENT_THEME}"
+        echo "Current theme: ${ZUSH_THEME}"
         echo ""
         echo "Available themes:"
         echo "  Built-in: dcs, minimal, powerline, split"
@@ -97,8 +97,8 @@ zush-theme() {
             return 0
             ;;
         reset)
-            unset ZUSH_CURRENT_THEME
-            ZUSH_CURRENT_THEME=""
+            unset ZUSH_THEME
+            ZUSH_THEME=""
             echo "✓ Reset to config default (reload shell to apply)"
             zle && zle reset-prompt
             return 0
@@ -106,9 +106,9 @@ zush-theme() {
     esac
 
     # Switch to theme
-    ZUSH_CURRENT_THEME="$theme_name"
-    export ZUSH_CURRENT_THEME
-    echo "✓ Switched to theme: ${ZUSH_CURRENT_THEME}"
+    ZUSH_THEME="$theme_name"
+    export ZUSH_THEME
+    echo "✓ Switched to theme: ${ZUSH_THEME}"
     zle && zle reset-prompt
 }
 
@@ -148,7 +148,7 @@ _zush_theme_list() {
         local version=$(grep '^version' "$theme_file" 2>/dev/null | sed 's/version = "\(.*\)"/\1/')
 
         local marker=""
-        [[ "$name" == "$ZUSH_CURRENT_THEME" ]] && marker=" ${green}→ (active)${reset}"
+        [[ "$name" == "$ZUSH_THEME" ]] && marker=" ${green}→ (active)${reset}"
 
         echo -e "${bold}${blue}${name}${reset}${marker}"
         [[ -n "$description" ]] && echo -e "  ${dim}${description}${reset}"
@@ -279,7 +279,7 @@ typeset -g ZUSH_SESSION_ID="${ZUSH_SESSION_ID:-$(head -c 8 /dev/urandom 2>/dev/n
 
 # Build theme arguments for zush-prompt command
 _zush_theme_args() {
-    [[ -n "$ZUSH_CURRENT_THEME" ]] && echo "--theme $ZUSH_CURRENT_THEME"
+    [[ -n "$ZUSH_THEME" ]] && echo "--theme $ZUSH_THEME"
 }
 
 # Build minimal context JSON for transient prompts

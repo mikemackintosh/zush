@@ -138,7 +138,6 @@ impl Module for RubyModule {
 mod tests {
     use super::*;
     use crate::modules::SandboxedFs;
-    use std::collections::HashMap;
     use std::path::PathBuf;
 
     #[test]
@@ -148,7 +147,6 @@ mod tests {
         let context = ModuleContext {
             pwd: PathBuf::from("/home/user/project"),
             home: PathBuf::from("/home/user"),
-            env: HashMap::new(),
             fs: SandboxedFs::new(vec![PathBuf::from("/home/user/project")]),
         };
 
@@ -164,7 +162,6 @@ mod tests {
         let context = ModuleContext {
             pwd: PathBuf::from("/home/user/my-gem"),
             home: PathBuf::from("/home/user"),
-            env: HashMap::new(),
             fs: SandboxedFs::new(vec![PathBuf::from("/home/user/my-gem")]),
         };
 

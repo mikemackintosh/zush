@@ -21,6 +21,11 @@ impl TomlParser {
         Self { parsed }
     }
 
+    /// Create a parser from an already-parsed TOML value (avoids re-parsing)
+    pub fn from_parsed(parsed: Option<toml::Value>) -> Self {
+        Self { parsed }
+    }
+
     /// Get a reference to the parsed TOML value
     pub fn get(&self) -> Option<&toml::Value> {
         self.parsed.as_ref()

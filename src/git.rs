@@ -1,8 +1,23 @@
 use git2::{Repository, StatusOptions, StatusShow};
 use serde_json::{json, Value};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
-#[derive(Debug, Default)]
+/// Cache entry for git status
+struct CacheEntry {
+    path: PathBuf,
+    status: GitStatus,
+    timestamp: Instant,
+}
+
+/// Global cache for git status (avoids recalculating on rapid prompt renders)
+static GIT_CACHE: Mutex<Option<CacheEntry>> = Mutex::new(None);
+
+/// Cache TTL - 1 second is short enough to be responsive but helps with rapid Enter presses
+const CACHE_TTL: Duration = Duration::from_secs(1);
+
+#[derive(Debug, Default, Clone)]
 pub struct GitStatus {
     pub branch: String,
     pub staged: usize,
@@ -14,12 +29,39 @@ pub struct GitStatus {
     pub conflicted: usize,
 }
 
-/// Get git status for the current directory
+/// Get git status for the current directory (with caching)
 /// This is much faster than calling `git` commands because:
 /// 1. No process spawning
 /// 2. Direct file reading from .git directory
 /// 3. No shell overhead
+/// 4. Results cached for 1 second to avoid redundant work
 pub fn get_git_status(path: &Path) -> Option<GitStatus> {
+    // Check cache first
+    if let Ok(cache) = GIT_CACHE.lock() {
+        if let Some(ref entry) = *cache {
+            if entry.path == path && entry.timestamp.elapsed() < CACHE_TTL {
+                return Some(entry.status.clone());
+            }
+        }
+    }
+
+    // Cache miss - compute status
+    let status = compute_git_status(path)?;
+
+    // Update cache
+    if let Ok(mut cache) = GIT_CACHE.lock() {
+        *cache = Some(CacheEntry {
+            path: path.to_path_buf(),
+            status: status.clone(),
+            timestamp: Instant::now(),
+        });
+    }
+
+    Some(status)
+}
+
+/// Actually compute git status (internal, not cached)
+fn compute_git_status(path: &Path) -> Option<GitStatus> {
     // Try to open repository - this is fast, just checks for .git
     let repo = Repository::discover(path).ok()?;
 

@@ -52,11 +52,6 @@ impl HistoryEntry {
         serde_json::to_string(self)
     }
 
-    /// Get the command text
-    pub fn command(&self) -> &str {
-        &self.cmd
-    }
-
     /// Get formatted timestamp for display
     pub fn formatted_time(&self) -> String {
         use chrono::{Local, TimeZone};

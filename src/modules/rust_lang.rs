@@ -139,7 +139,6 @@ impl Module for RustModule {
 mod tests {
     use super::*;
     use crate::modules::SandboxedFs;
-    use std::collections::HashMap;
     use std::fs;
     use std::path::PathBuf;
     use tempfile::TempDir;
@@ -161,7 +160,6 @@ version = "0.1.0"
         let context = ModuleContext {
             pwd: temp_dir.path().to_path_buf(),
             home: PathBuf::from("/home/user"),
-            env: HashMap::new(),
             fs: SandboxedFs::new(vec![temp_dir.path().to_path_buf()]),
         };
 
@@ -185,7 +183,6 @@ version = "1.0.0"
         let context = ModuleContext {
             pwd: temp_dir.path().to_path_buf(),
             home: PathBuf::from("/home/user"),
-            env: HashMap::new(),
             fs: SandboxedFs::new(vec![temp_dir.path().to_path_buf()]),
         };
 

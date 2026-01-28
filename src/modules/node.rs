@@ -125,7 +125,6 @@ impl Module for NodeModule {
 mod tests {
     use super::*;
     use crate::modules::SandboxedFs;
-    use std::collections::HashMap;
     use std::fs;
     use std::path::PathBuf;
     use tempfile::TempDir;
@@ -140,7 +139,6 @@ mod tests {
         let context = ModuleContext {
             pwd: temp_dir.path().to_path_buf(),
             home: PathBuf::from("/home/user"),
-            env: HashMap::new(),
             fs: SandboxedFs::new(vec![temp_dir.path().to_path_buf()]),
         };
 

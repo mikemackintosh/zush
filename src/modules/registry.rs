@@ -3,13 +3,30 @@
 use super::{Module, ModuleContext};
 use anyhow::Result;
 use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
+
+/// Global cache for module outputs (persists across prompt renders)
+static MODULE_CACHE: Mutex<Option<GlobalModuleCache>> = Mutex::new(None);
+
+/// Cache TTL for module outputs
+const MODULE_CACHE_TTL: Duration = Duration::from_millis(500);
+
+/// Get or initialize the global module cache
+fn get_or_init_cache<F, R>(f: F) -> R
+where
+    F: FnOnce(&mut GlobalModuleCache) -> R,
+{
+    let mut guard = MODULE_CACHE.lock().unwrap();
+    let cache = guard.get_or_insert_with(GlobalModuleCache::new);
+    f(cache)
+}
 
 /// Registry that manages all available modules
 pub struct ModuleRegistry {
     modules: HashMap<String, Box<dyn Module>>,
     enabled: Vec<String>,
-    cache: ModuleCache,
 }
 
 impl ModuleRegistry {
@@ -18,7 +35,6 @@ impl ModuleRegistry {
         let mut registry = Self {
             modules: HashMap::new(),
             enabled: Vec::new(),
-            cache: ModuleCache::new(),
         };
 
         // Register all built-in modules
@@ -87,12 +103,14 @@ impl ModuleRegistry {
     /// Render all enabled modules that should display
     pub fn render_all(&mut self, context: &ModuleContext) -> Vec<ModuleOutput> {
         let mut outputs = Vec::new();
+        let pwd = &context.pwd;
 
         for module_id in &self.enabled {
             if let Some(module) = self.modules.get(module_id) {
-                // Check cache first
-                if let Some(cached) = self.cache.get(module_id) {
-                    outputs.push(cached);
+                // Check global cache first (keyed by module_id + pwd)
+                let cached = get_or_init_cache(|cache| cache.get(module_id, pwd));
+                if let Some(cached_output) = cached {
+                    outputs.push(cached_output);
                     continue;
                 }
 
@@ -114,8 +132,10 @@ impl ModuleRegistry {
                             timestamp: Instant::now(),
                         };
 
-                        // Cache the output
-                        self.cache.set(module_id.clone(), module_output.clone());
+                        // Cache the output in global cache
+                        get_or_init_cache(|cache| {
+                            cache.set(module_id.clone(), pwd.clone(), module_output.clone());
+                        });
 
                         outputs.push(module_output);
                     }
@@ -140,9 +160,9 @@ impl ModuleRegistry {
         module.render(context)
     }
 
-    /// Clear the cache
+    /// Clear the global cache
     pub fn clear_cache(&mut self) {
-        self.cache.clear();
+        get_or_init_cache(|cache| cache.clear());
     }
 }
 
@@ -160,23 +180,23 @@ pub struct ModuleOutput {
     pub timestamp: Instant,
 }
 
-/// Cache for module outputs
-struct ModuleCache {
-    cache: HashMap<String, ModuleOutput>,
-    cache_duration: Duration,
+/// Global cache for module outputs - keyed by (module_id, pwd)
+struct GlobalModuleCache {
+    /// Cache entries keyed by (module_id, pwd)
+    entries: HashMap<(String, PathBuf), ModuleOutput>,
 }
 
-impl ModuleCache {
+impl GlobalModuleCache {
     fn new() -> Self {
         Self {
-            cache: HashMap::new(),
-            cache_duration: Duration::from_millis(200), // Cache for 200ms
+            entries: HashMap::new(),
         }
     }
 
-    fn get(&self, id: &str) -> Option<ModuleOutput> {
-        self.cache.get(id).and_then(|output| {
-            if output.timestamp.elapsed() < self.cache_duration {
+    fn get(&self, module_id: &str, pwd: &PathBuf) -> Option<ModuleOutput> {
+        let key = (module_id.to_string(), pwd.clone());
+        self.entries.get(&key).and_then(|output| {
+            if output.timestamp.elapsed() < MODULE_CACHE_TTL {
                 Some(output.clone())
             } else {
                 None
@@ -184,12 +204,13 @@ impl ModuleCache {
         })
     }
 
-    fn set(&mut self, id: String, output: ModuleOutput) {
-        self.cache.insert(id, output);
+    fn set(&mut self, module_id: String, pwd: PathBuf, output: ModuleOutput) {
+        let key = (module_id, pwd);
+        self.entries.insert(key, output);
     }
 
     fn clear(&mut self) {
-        self.cache.clear();
+        self.entries.clear();
     }
 }
 

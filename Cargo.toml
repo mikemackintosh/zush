@@ -60,7 +60,7 @@ tera-templates = ["tera"]
 history = ["fs4", "ratatui", "nucleo", "nucleo-matcher", "libc", "tempfile"]
 
 [profile.release]
-lto = false
-codegen-units = 16
-strip = false
-opt-level = 2
+lto = "thin"
+codegen-units = 1
+strip = true
+opt-level = 3

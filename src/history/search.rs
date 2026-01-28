@@ -119,42 +119,6 @@ pub fn search(
     results
 }
 
-/// Deduplicate consecutive identical commands
-pub fn deduplicate(entries: Vec<HistoryEntry>) -> Vec<HistoryEntry> {
-    let mut result = Vec::with_capacity(entries.len());
-    let mut last_cmd: Option<&str> = None;
-
-    for entry in entries.iter() {
-        if last_cmd != Some(&entry.cmd) {
-            result.push(entry.clone());
-            last_cmd = Some(&entry.cmd);
-        }
-    }
-
-    result
-}
-
-/// Deduplicate by command, keeping only the most recent occurrence
-pub fn deduplicate_keep_recent(entries: Vec<HistoryEntry>) -> Vec<HistoryEntry> {
-    use std::collections::HashMap;
-
-    let mut seen: HashMap<String, HistoryEntry> = HashMap::new();
-
-    for entry in entries {
-        seen.entry(entry.cmd.clone())
-            .and_modify(|existing| {
-                if entry.ts > existing.ts {
-                    *existing = entry.clone();
-                }
-            })
-            .or_insert(entry);
-    }
-
-    let mut result: Vec<_> = seen.into_values().collect();
-    result.sort_by(|a, b| b.ts.cmp(&a.ts));
-    result
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -213,18 +177,5 @@ mod tests {
         let results = search(&entries, "", &filter, 10);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].entry.cmd, "cmd1");
-    }
-
-    #[test]
-    fn test_deduplicate() {
-        let entries = vec![
-            make_entry("git status", 1000),
-            make_entry("git status", 2000),
-            make_entry("git commit", 3000),
-            make_entry("git status", 4000),
-        ];
-
-        let deduped = deduplicate(entries);
-        assert_eq!(deduped.len(), 3);
     }
 }
