@@ -106,9 +106,13 @@ fn render_prompt(
     };
 
     // Determine which theme to load
+    // Priority: CLI flag > ZUSH_THEME env var > config file
     let theme_str = if let Some(theme_name) = &cli.theme {
         // CLI argument takes precedence
         load_theme(theme_name).ok()
+    } else if let Ok(theme_name) = std::env::var("ZUSH_THEME") {
+        // Environment variable is second priority
+        load_theme(&theme_name).ok()
     } else if let Some(config) = &config_str {
         // Parse config to get theme name
         if let Ok(parsed) = toml::from_str::<toml::Value>(config) {
