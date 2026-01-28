@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.1](https://github.com/mikemackintosh/zush/compare/v1.6.0...v1.6.1) (2026-01-28)
+
+### 🐛 Bug Fixes
+
+* **env:** use ZUSH_THEME env with priority ([94a1a09](https://github.com/mikemackintosh/zush/commit/94a1a0969c0c95fb460377e92f6aa14b5e9e92e4))
+
 ## [1.6.0](https://github.com/mikemackintosh/zush/compare/v1.5.2...v1.6.0) (2026-01-12)
 
 ### ✨ Features
