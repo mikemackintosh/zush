@@ -8,6 +8,7 @@ use std::path::PathBuf;
 /// Zush - A high-performance Zsh prompt with perfect buffering and 24-bit colors
 #[derive(Parser, Debug)]
 #[command(name = "zush-prompt")]
+#[command(version)]
 #[command(about = "A Rust-powered Zsh prompt engine", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
@@ -40,6 +41,9 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
+    /// Print version information
+    Version,
+
     /// Initialize shell integration
     Init {
         /// Shell type (currently only zsh supported)

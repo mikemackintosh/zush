@@ -28,6 +28,9 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
+        Some(Commands::Version) => {
+            println!("zush-prompt {}", env!("CARGO_PKG_VERSION"));
+        }
         Some(Commands::Init { shell }) => {
             init::print_init_script(shell)?;
         }
