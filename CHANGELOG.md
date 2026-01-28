@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.3](https://github.com/mikemackintosh/zush/compare/v1.6.2...v1.6.3) (2026-01-28)
+
+### 🐛 Bug Fixes
+
+* **context:** fix short_pwd ([1924c59](https://github.com/mikemackintosh/zush/commit/1924c5933a8d5c3d9c1ac814ca6567082b61cbd4))
+
+### 🔨 Chores
+
+* **docs:** update docs ([922b6db](https://github.com/mikemackintosh/zush/commit/922b6db83d793a9caedd9cbfe5a49d49e5bfc112))
+
 ## [1.6.2](https://github.com/mikemackintosh/zush/compare/v1.6.1...v1.6.2) (2026-01-28)
 
 ### 🐛 Bug Fixes
