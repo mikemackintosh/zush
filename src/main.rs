@@ -252,6 +252,21 @@ fn render_prompt(
         }
     }
 
+    // Ensure pwd_short is derived from pwd if pwd was provided but pwd_short wasn't
+    if !context.contains_key("pwd_short") {
+        if let Some(pwd_value) = context.get("pwd").and_then(|v| v.as_str()) {
+            // If pwd already starts with ~, use as-is; otherwise try to shorten
+            let pwd_short = if pwd_value.starts_with('~') {
+                pwd_value.to_string()
+            } else if let Ok(home) = std::env::var("HOME") {
+                pwd_value.replace(&home, "~")
+            } else {
+                pwd_value.to_string()
+            };
+            context.insert("pwd_short".to_string(), json!(pwd_short));
+        }
+    }
+
     // Detect if running over SSH
     let is_ssh = std::env::var("SSH_CONNECTION").is_ok() || std::env::var("SSH_TTY").is_ok();
     context.insert("is_ssh".to_string(), json!(is_ssh));

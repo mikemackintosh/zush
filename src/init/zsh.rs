@@ -129,7 +129,7 @@ _zush_theme_list() {
     echo ""
 
     local themes_dir=~/.config/zush/themes
-    local context='{"pwd":"~/projects/app","user":"'$USER'","git_branch":"main","time":"'$(date +%H:%M:%S)'","git_modified":2,"git_staged":1}'
+    local context='{"pwd":"~/projects/app","pwd_short":"~/projects/app","user":"'$USER'","git_branch":"main","time":"'$(date +%H:%M:%S)'","git_modified":2,"git_staged":1}'
 
     local theme_files=()
     for builtin in dcs minimal powerline split; do
@@ -184,9 +184,9 @@ _zush_theme_preview_all() {
 
     local current_time=$(date +%H:%M:%S)
     local scenarios=(
-        "Success|{\"pwd\":\"~/projects/app\",\"user\":\"$USER\",\"git_branch\":\"main\",\"time\":\"$current_time\"}|0"
-        "With Git Changes|{\"pwd\":\"~/code/zush\",\"user\":\"$USER\",\"git_branch\":\"feature/preview\",\"git_modified\":3,\"git_staged\":1,\"git_untracked\":2,\"time\":\"$current_time\"}|0"
-        "Error State|{\"pwd\":\"~/projects/app\",\"user\":\"$USER\",\"git_branch\":\"main\",\"time\":\"$current_time\"}|1"
+        "Success|{\"pwd\":\"~/projects/app\",\"pwd_short\":\"~/projects/app\",\"user\":\"$USER\",\"git_branch\":\"main\",\"time\":\"$current_time\"}|0"
+        "With Git Changes|{\"pwd\":\"~/code/zush\",\"pwd_short\":\"~/code/zush\",\"user\":\"$USER\",\"git_branch\":\"feature/preview\",\"git_modified\":3,\"git_staged\":1,\"git_untracked\":2,\"time\":\"$current_time\"}|0"
+        "Error State|{\"pwd\":\"~/projects/app\",\"pwd_short\":\"~/projects/app\",\"user\":\"$USER\",\"git_branch\":\"main\",\"time\":\"$current_time\"}|1"
     )
 
     local themes_dir=~/.config/zush/themes
