@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.2](https://github.com/mikemackintosh/zush/compare/v1.6.1...v1.6.2) (2026-01-28)
+
+### 🐛 Bug Fixes
+
+* **perf:** improve performance ([0038397](https://github.com/mikemackintosh/zush/commit/00383972adf2d8f4b2ea8e0cf944c5fa0aef53cd))
+
 ## [1.6.1](https://github.com/mikemackintosh/zush/compare/v1.6.0...v1.6.1) (2026-01-28)
 
 ### 🐛 Bug Fixes
