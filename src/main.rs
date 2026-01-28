@@ -321,24 +321,26 @@ fn render_prompt(
         .or_insert(json!(0));
 
     // Collect module information (Python, Node, Rust, Docker, etc.)
-    // This is done natively for performance - context-aware detection
-    if let Ok(module_context) = modules::ModuleContext::new() {
-        let mut registry = modules::registry::ModuleRegistry::new();
+    // Skip auto-detection if modules were provided via context (e.g., for previews)
+    if !context.contains_key("modules") {
+        if let Ok(module_context) = modules::ModuleContext::new() {
+            let mut registry = modules::registry::ModuleRegistry::new();
 
-        // Render all enabled modules that should display in current context
-        let module_outputs = registry.render_all(&module_context);
+            // Render all enabled modules that should display in current context
+            let module_outputs = registry.render_all(&module_context);
 
-        // Add module outputs to context
-        let mut modules_data = Vec::new();
-        for output in module_outputs {
-            modules_data.push(json!({
-                "id": output.id,
-                "content": output.content,
-            }));
-        }
+            // Add module outputs to context
+            let mut modules_data = Vec::new();
+            for output in module_outputs {
+                modules_data.push(json!({
+                    "id": output.id,
+                    "content": output.content,
+                }));
+            }
 
-        if !modules_data.is_empty() {
-            context.insert("modules".to_string(), json!(modules_data));
+            if !modules_data.is_empty() {
+                context.insert("modules".to_string(), json!(modules_data));
+            }
         }
     }
 
