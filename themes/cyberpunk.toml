@@ -23,15 +23,36 @@ fg_dark = "#0a0a0f"
 white = "#ffffff"
 
 [symbols]
+# Sharp slant separators for edgy cyberpunk look
+sep_slant = "\ue0b8"
+sep_slant_left = "\ue0ba"
+
+# Icons
 prompt_arrow = "⟫"
-git_branch = ""
+git_icon = ""
 lambda = "λ"
+folder = ""
+tri_left = "◢"
+tri_right = "◣"
 
 [templates]
-main = """{{segment colors.bg_segment colors.neon_cyan " ◢ "}}{{segment colors.bg_segment colors.neon_pink time}}{{segment colors.bg_segment colors.neon_cyan " ◣ "}}{{reset}}{{color colors.neon_purple "▰▰"}}{{segment colors.neon_pink colors.fg_dark " λ "}}{{reset}}{{color colors.neon_pink "▰"}}{{segment colors.neon_cyan colors.fg_dark "  "}}{{segment colors.neon_cyan colors.fg_dark pwd_short}}{{segment colors.neon_cyan colors.fg_dark " "}}{{reset}}{{color colors.neon_cyan "▰"}}{{#if git_branch}}{{segment colors.neon_purple colors.white "  "}}{{segment colors.neon_purple colors.white git_branch}}{{#if (gt git_modified 0)}} {{segment colors.neon_purple colors.neon_yellow "✦"}}{{segment colors.neon_purple colors.neon_yellow git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{segment colors.neon_purple colors.glitch_green "+"}}{{segment colors.neon_purple colors.glitch_green git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{segment colors.neon_purple colors.chrome "?"}}{{segment colors.neon_purple colors.chrome git_untracked}}{{/if}}{{segment colors.neon_purple colors.white " "}}{{reset}}{{color colors.neon_purple "▰"}}{{/if}}
-{{color colors.dark_chrome pwd_short}}
-{{#if (eq exit_code 0)}}{{color colors.neon_cyan "⟫"}}{{color colors.neon_pink "⟫"}}{{color colors.neon_yellow "⟫"}} {{else}}{{color colors.glitch_red "⟪"}}{{color colors.glitch_red exit_code}}{{color colors.glitch_red "⟫"}} {{color colors.glitch_red "⟫⟫⟫"}} {{/if}}"""
+main = """\
+(fg bg_segment)@sep_slant_left(/fg)\
+(bg bg_segment)(fg neon_cyan) @tri_left (/fg)(fg neon_pink)(b){{time}}(/b)(/fg)(fg neon_cyan) @tri_right (/fg)(/bg)\
+(bg neon_pink)(fg bg_segment)@sep_slant(/fg)(/bg)\
+(bg neon_pink)(fg fg_dark) @lambda (/fg)(/bg)\
+(bg neon_cyan)(fg neon_pink)@sep_slant(/fg)(/bg)\
+(bg neon_cyan)(fg fg_dark) @folder {{pwd_short}} (/fg)(/bg)\
+{{#if git_branch}}\
+(bg neon_purple)(fg neon_cyan)@sep_slant(/fg)(/bg)\
+(bg neon_purple)(fg white) @git_icon {{git_branch}}{{#if (gt git_modified 0)}} (fg neon_yellow)✦{{git_modified}}(/fg){{/if}}{{#if (gt git_staged 0)}} (fg glitch_green)+{{git_staged}}(/fg){{/if}}{{#if (gt git_untracked 0)}} (fg chrome)?{{git_untracked}}(/fg){{/if}} (/fg)(/bg)\
+(fg neon_purple)@sep_slant(/fg)\
+{{else}}\
+(fg neon_cyan)@sep_slant(/fg)\
+{{/if}}
+(fg dark_chrome)▰▰(/fg)
+{{#if (eq exit_code 0)}}(fg neon_cyan)⟫(/fg)(fg neon_pink)⟫(/fg)(fg neon_yellow)⟫(/fg) {{else}}(fg glitch_red)⟪{{exit_code}}⟫ ⟫⟫⟫(/fg) {{/if}}"""
 
-transient = """{{color colors.dark_chrome time}} {{#if (eq exit_code 0)}}{{color colors.dark_chrome "⟫"}} {{else}}{{color colors.glitch_red "⟫"}} {{/if}}"""
+transient = """(fg dark_chrome){{time}}(/fg) {{#if (eq exit_code 0)}}(fg dark_chrome)⟫(/fg) {{else}}(fg glitch_red)⟫(/fg) {{/if}}"""
 
 right = ""

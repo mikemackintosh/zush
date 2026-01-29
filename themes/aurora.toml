@@ -26,15 +26,35 @@ red_dawn = "#ff6b6b"
 fg_dark = "#0b0f14"
 
 [symbols]
+# Soft rounded separators for ethereal flowing look
+sep_round = "\ue0b4"
+sep_round_left = "\ue0b6"
+
+# Icons
 prompt_arrow = "❯"
-git_branch = ""
-lambda = "✧"
+git_icon = ""
+star = "✦"
+sparkle = "✧"
+folder = ""
 
 [templates]
-main = """{{segment colors.midnight colors.aurora_teal " ✦ "}}{{segment colors.midnight colors.ice_white time}}{{segment colors.midnight colors.aurora_teal " ✦ "}}{{reset}}{{color colors.midnight "▓"}}{{segment colors.aurora_green colors.fg_dark " ✧ "}}{{reset}}{{color colors.aurora_green "░"}}{{segment colors.aurora_blue colors.ice_white "  "}}{{segment colors.aurora_blue colors.ice_white pwd_short}}{{segment colors.aurora_blue colors.ice_white " "}}{{reset}}{{color colors.aurora_blue "░"}}{{#if git_branch}}{{segment colors.aurora_purple colors.snow "  "}}{{segment colors.aurora_purple colors.snow git_branch}}{{#if (gt git_modified 0)}} {{segment colors.aurora_purple colors.aurora_pink "◇"}}{{segment colors.aurora_purple colors.aurora_pink git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{segment colors.aurora_purple colors.aurora_cyan "+"}}{{segment colors.aurora_purple colors.aurora_cyan git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{segment colors.aurora_purple colors.starlight "?"}}{{segment colors.aurora_purple colors.starlight git_untracked}}{{/if}}{{segment colors.aurora_purple colors.snow " "}}{{reset}}{{color colors.aurora_purple "░"}}{{/if}}
-{{color colors.glacier "～～"}} {{color colors.glacier pwd_short}}
-{{#if (eq exit_code 0)}}{{color colors.aurora_green "❯"}}{{color colors.aurora_teal "❯"}}{{color colors.aurora_cyan "❯"}} {{else}}{{color colors.red_dawn "["}}{{color colors.red_dawn exit_code}}{{color colors.red_dawn "]"}} {{color colors.red_dawn "❯❯❯"}} {{/if}}"""
+main = """\
+(fg midnight)@sep_round_left(/fg)\
+(bg midnight)(fg aurora_teal) @star (/fg)(fg ice_white)(b){{time}}(/b)(/fg)(fg aurora_teal) @star (/fg)(/bg)\
+(bg aurora_green)(fg midnight)@sep_round(/fg)(/bg)\
+(bg aurora_green)(fg fg_dark) @sparkle (/fg)(/bg)\
+(bg aurora_blue)(fg aurora_green)@sep_round(/fg)(/bg)\
+(bg aurora_blue)(fg ice_white) @folder {{pwd_short}} (/fg)(/bg)\
+{{#if git_branch}}\
+(bg aurora_purple)(fg aurora_blue)@sep_round(/fg)(/bg)\
+(bg aurora_purple)(fg snow) @git_icon {{git_branch}}{{#if (gt git_modified 0)}} (fg aurora_pink)◇{{git_modified}}(/fg){{/if}}{{#if (gt git_staged 0)}} (fg aurora_cyan)+{{git_staged}}(/fg){{/if}}{{#if (gt git_untracked 0)}} (fg starlight)?{{git_untracked}}(/fg){{/if}} (/fg)(/bg)\
+(fg aurora_purple)@sep_round(/fg)\
+{{else}}\
+(fg aurora_blue)@sep_round(/fg)\
+{{/if}}
+(fg glacier)～～(/fg)
+{{#if (eq exit_code 0)}}(fg aurora_green)❯(/fg)(fg aurora_teal)❯(/fg)(fg aurora_cyan)❯(/fg) {{else}}(fg red_dawn)[{{exit_code}}] ❯❯❯(/fg) {{/if}}"""
 
-transient = """{{color colors.glacier time}} {{#if (eq exit_code 0)}}{{color colors.glacier "❯"}} {{else}}{{color colors.red_dawn "❯"}} {{/if}}"""
+transient = """(fg glacier){{time}}(/fg) {{#if (eq exit_code 0)}}(fg glacier)❯(/fg) {{else}}(fg red_dawn)❯(/fg) {{/if}}"""
 
 right = ""

@@ -25,15 +25,35 @@ white = "#ffffff"
 fg_dark = "#0a0a12"
 
 [symbols]
+# Soft rounded separators for dreamy cosmic look
+sep_round = "\ue0b4"
+sep_round_left = "\ue0b6"
+
+# Icons
 prompt_arrow = "⟩"
-git_branch = ""
-lambda = "✦"
+git_icon = ""
+star = "★"
+sparkle = "✦"
+folder = ""
 
 [templates]
-main = """{{segment colors.dark_matter colors.stardust " ★ "}}{{segment colors.dark_matter colors.comet time}}{{segment colors.dark_matter colors.stardust " ★ "}}{{reset}}{{color colors.dark_matter "▓"}}{{segment colors.nebula_purple colors.white " ✦ "}}{{reset}}{{color colors.nebula_purple "░"}}{{segment colors.nebula_blue colors.starlight "  "}}{{segment colors.nebula_blue colors.starlight pwd_short}}{{segment colors.nebula_blue colors.starlight " "}}{{reset}}{{color colors.nebula_blue "░"}}{{#if git_branch}}{{segment colors.cosmic_cyan colors.fg_dark "  "}}{{segment colors.cosmic_cyan colors.fg_dark git_branch}}{{#if (gt git_modified 0)}} {{segment colors.cosmic_cyan colors.nova_orange "☄"}}{{segment colors.cosmic_cyan colors.nova_orange git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{segment colors.cosmic_cyan colors.pulsar_green "+"}}{{segment colors.cosmic_cyan colors.pulsar_green git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{segment colors.cosmic_cyan colors.fg_dark "?"}}{{segment colors.cosmic_cyan colors.fg_dark git_untracked}}{{/if}}{{segment colors.cosmic_cyan colors.fg_dark " "}}{{reset}}{{color colors.cosmic_cyan "░"}}{{/if}}
-{{color colors.comet "✧"}} {{color colors.comet pwd_short}}
-{{#if (eq exit_code 0)}}{{color colors.nebula_purple "⟩"}}{{color colors.nebula_pink "⟩"}}{{color colors.cosmic_cyan "⟩"}} {{else}}{{color colors.supernova "☄"}} {{color colors.supernova exit_code}} {{color colors.supernova "⟩⟩⟩"}} {{/if}}"""
+main = """\
+(fg dark_matter)@sep_round_left(/fg)\
+(bg dark_matter)(fg stardust) @star (/fg)(fg comet)(b){{time}}(/b)(/fg)(fg stardust) @star (/fg)(/bg)\
+(bg nebula_purple)(fg dark_matter)@sep_round(/fg)(/bg)\
+(bg nebula_purple)(fg white) @sparkle (/fg)(/bg)\
+(bg nebula_blue)(fg nebula_purple)@sep_round(/fg)(/bg)\
+(bg nebula_blue)(fg starlight) @folder {{pwd_short}} (/fg)(/bg)\
+{{#if git_branch}}\
+(bg cosmic_cyan)(fg nebula_blue)@sep_round(/fg)(/bg)\
+(bg cosmic_cyan)(fg fg_dark) @git_icon {{git_branch}}{{#if (gt git_modified 0)}} (fg nova_orange)☄{{git_modified}}(/fg){{/if}}{{#if (gt git_staged 0)}} (fg pulsar_green)+{{git_staged}}(/fg){{/if}}{{#if (gt git_untracked 0)}} ?{{git_untracked}}{{/if}} (/fg)(/bg)\
+(fg cosmic_cyan)@sep_round(/fg)\
+{{else}}\
+(fg nebula_blue)@sep_round(/fg)\
+{{/if}}
+(fg comet)✧(/fg)
+{{#if (eq exit_code 0)}}(fg nebula_purple)⟩(/fg)(fg nebula_pink)⟩(/fg)(fg cosmic_cyan)⟩(/fg) {{else}}(fg supernova)☄ {{exit_code}} ⟩⟩⟩(/fg) {{/if}}"""
 
-transient = """{{color colors.comet time}} {{#if (eq exit_code 0)}}{{color colors.comet "⟩"}} {{else}}{{color colors.supernova "⟩"}} {{/if}}"""
+transient = """(fg comet){{time}}(/fg) {{#if (eq exit_code 0)}}(fg comet)⟩(/fg) {{else}}(fg supernova)⟩(/fg) {{/if}}"""
 
 right = ""

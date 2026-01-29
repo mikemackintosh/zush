@@ -23,15 +23,37 @@ white = "#ffffff"
 fg_dark = "#1a1a2e"
 
 [symbols]
+# Powerline separators
+sep_round = "\ue0b4"
+sep_round_left = "\ue0b6"
+sep_arrow = "\ue0b0"
+sep_arrow_left = "\ue0b2"
+
+# Icons
 prompt_arrow = "▸"
-git_branch = ""
+git_icon = ""
 lambda = "Ω"
+folder = ""
+diamond = "◆"
 
 [templates]
-main = """{{segment colors.grid_purple colors.vapor_cyan " ◆ "}}{{segment colors.grid_purple colors.vapor_yellow time}}{{segment colors.grid_purple colors.vapor_cyan " ◆ "}}{{reset}}{{color colors.grid_purple "█"}}{{segment colors.vapor_pink colors.fg_dark " Ω "}}{{reset}}{{color colors.vapor_pink "█"}}{{segment colors.vapor_cyan colors.fg_dark "  "}}{{segment colors.vapor_cyan colors.fg_dark pwd_short}}{{segment colors.vapor_cyan colors.fg_dark " "}}{{reset}}{{color colors.vapor_cyan "█"}}{{#if git_branch}}{{segment colors.vapor_purple colors.white "  "}}{{segment colors.vapor_purple colors.white git_branch}}{{#if (gt git_modified 0)}} {{segment colors.vapor_purple colors.vapor_yellow "✿"}}{{segment colors.vapor_purple colors.vapor_yellow git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{segment colors.vapor_purple colors.vapor_blue "+"}}{{segment colors.vapor_purple colors.vapor_blue git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{segment colors.vapor_purple colors.white "?"}}{{segment colors.vapor_purple colors.white git_untracked}}{{/if}}{{segment colors.vapor_purple colors.white " "}}{{reset}}{{color colors.vapor_purple "█"}}{{/if}}
-{{color colors.dark_chrome "〰〰"}} {{color colors.dark_chrome pwd_short}}
-{{#if (eq exit_code 0)}}{{color colors.vapor_pink "▸"}}{{color colors.vapor_cyan "▸"}}{{color colors.vapor_purple "▸"}} {{else}}{{color colors.vhs_red "⟨"}}{{color colors.vhs_red exit_code}}{{color colors.vhs_red "⟩"}} {{color colors.vhs_red "▸▸▸"}} {{/if}}"""
+main = """\
+(fg grid_purple)@sep_round_left(/fg)\
+(bg grid_purple)(fg vapor_cyan) @diamond (/fg)(fg vapor_yellow)(b){{time}}(/b)(/fg)(fg vapor_cyan) @diamond (/fg)(/bg)\
+(bg vapor_pink)(fg grid_purple)@sep_arrow(/fg)(/bg)\
+(bg vapor_pink)(fg fg_dark) @lambda (/fg)(/bg)\
+(bg vapor_cyan)(fg vapor_pink)@sep_arrow(/fg)(/bg)\
+(bg vapor_cyan)(fg fg_dark) @folder {{pwd_short}} (/fg)(/bg)\
+{{#if git_branch}}\
+(bg vapor_purple)(fg vapor_cyan)@sep_arrow(/fg)(/bg)\
+(bg vapor_purple)(fg white) @git_icon {{git_branch}}{{#if (gt git_modified 0)}} (fg vapor_yellow)✿{{git_modified}}(/fg){{/if}}{{#if (gt git_staged 0)}} (fg vapor_blue)+{{git_staged}}(/fg){{/if}}{{#if (gt git_untracked 0)}} ?{{git_untracked}}{{/if}} (/fg)(/bg)\
+(fg vapor_purple)@sep_round(/fg)\
+{{else}}\
+(fg vapor_cyan)@sep_round(/fg)\
+{{/if}}
+(fg dark_chrome)〰〰(/fg)
+{{#if (eq exit_code 0)}}(fg vapor_pink)▸(/fg)(fg vapor_cyan)▸(/fg)(fg vapor_purple)▸(/fg) {{else}}(fg vhs_red)⟨{{exit_code}}⟩ ▸▸▸(/fg) {{/if}}"""
 
-transient = """{{color colors.dark_chrome time}} {{#if (eq exit_code 0)}}{{color colors.dark_chrome "▸"}} {{else}}{{color colors.vhs_red "▸"}} {{/if}}"""
+transient = """(fg dark_chrome){{time}}(/fg) {{#if (eq exit_code 0)}}(fg dark_chrome)▸(/fg) {{else}}(fg vhs_red)▸(/fg) {{/if}}"""
 
 right = ""

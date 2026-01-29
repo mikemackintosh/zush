@@ -23,15 +23,36 @@ white = "#ffffff"
 fg_dark = "#1a1a2e"
 
 [symbols]
+# Slant separators for retro 80s aesthetic
+sep_slant = "\ue0bc"
+sep_slant_left = "\ue0be"
+
+# Icons
 prompt_arrow = "▷"
-git_branch = ""
+git_icon = ""
 lambda = "Λ"
+folder = ""
+sun_left = "◐"
+sun_right = "◑"
 
 [templates]
-main = """{{segment colors.deep_purple colors.sunset_orange " ◐ "}}{{segment colors.deep_purple colors.sunset_yellow time}}{{segment colors.deep_purple colors.sunset_orange " ◑ "}}{{reset}}{{color colors.deep_purple "█"}}{{segment colors.sunset_pink colors.fg_dark " Λ "}}{{reset}}{{color colors.sunset_pink "█"}}{{segment colors.sunset_purple colors.white "  "}}{{segment colors.sunset_purple colors.white pwd_short}}{{segment colors.sunset_purple colors.white " "}}{{reset}}{{color colors.sunset_purple "█"}}{{#if git_branch}}{{segment colors.electric_blue colors.fg_dark "  "}}{{segment colors.electric_blue colors.fg_dark git_branch}}{{#if (gt git_modified 0)}} {{segment colors.electric_blue colors.sunset_orange "✦"}}{{segment colors.electric_blue colors.sunset_orange git_modified}}{{/if}}{{#if (gt git_staged 0)}} {{segment colors.electric_blue colors.sunset_yellow "+"}}{{segment colors.electric_blue colors.sunset_yellow git_staged}}{{/if}}{{#if (gt git_untracked 0)}} {{segment colors.electric_blue colors.fg_dark "?"}}{{segment colors.electric_blue colors.fg_dark git_untracked}}{{/if}}{{segment colors.electric_blue colors.fg_dark " "}}{{reset}}{{color colors.electric_blue "█"}}{{/if}}
-{{color colors.dark_chrome "∿∿∿"}} {{color colors.dark_chrome pwd_short}}
-{{#if (eq exit_code 0)}}{{color colors.sunset_orange "▷"}}{{color colors.sunset_pink "▷"}}{{color colors.sunset_purple "▷"}} {{else}}{{color colors.sunset_red "⟨"}}{{color colors.sunset_red exit_code}}{{color colors.sunset_red "⟩"}} {{color colors.sunset_red "▷▷▷"}} {{/if}}"""
+main = """\
+(fg deep_purple)@sep_slant_left(/fg)\
+(bg deep_purple)(fg sunset_orange) @sun_left (/fg)(fg sunset_yellow)(b){{time}}(/b)(/fg)(fg sunset_orange) @sun_right (/fg)(/bg)\
+(bg sunset_pink)(fg deep_purple)@sep_slant(/fg)(/bg)\
+(bg sunset_pink)(fg fg_dark) @lambda (/fg)(/bg)\
+(bg sunset_purple)(fg sunset_pink)@sep_slant(/fg)(/bg)\
+(bg sunset_purple)(fg white) @folder {{pwd_short}} (/fg)(/bg)\
+{{#if git_branch}}\
+(bg electric_blue)(fg sunset_purple)@sep_slant(/fg)(/bg)\
+(bg electric_blue)(fg fg_dark) @git_icon {{git_branch}}{{#if (gt git_modified 0)}} (fg sunset_orange)✦{{git_modified}}(/fg){{/if}}{{#if (gt git_staged 0)}} (fg sunset_yellow)+{{git_staged}}(/fg){{/if}}{{#if (gt git_untracked 0)}} ?{{git_untracked}}{{/if}} (/fg)(/bg)\
+(fg electric_blue)@sep_slant(/fg)\
+{{else}}\
+(fg sunset_purple)@sep_slant(/fg)\
+{{/if}}
+(fg dark_chrome)∿∿∿(/fg)
+{{#if (eq exit_code 0)}}(fg sunset_orange)▷(/fg)(fg sunset_pink)▷(/fg)(fg sunset_purple)▷(/fg) {{else}}(fg sunset_red)⟨{{exit_code}}⟩ ▷▷▷(/fg) {{/if}}"""
 
-transient = """{{color colors.dark_chrome time}} {{#if (eq exit_code 0)}}{{color colors.dark_chrome "▷"}} {{else}}{{color colors.sunset_red "▷"}} {{/if}}"""
+transient = """(fg dark_chrome){{time}}(/fg) {{#if (eq exit_code 0)}}(fg dark_chrome)▷(/fg) {{else}}(fg sunset_red)▷(/fg) {{/if}}"""
 
 right = ""
