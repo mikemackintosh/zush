@@ -109,9 +109,8 @@ fn render_prompt(
     };
 
     // Parse config TOML once upfront (if it exists) to avoid double-parsing
-    let config_parsed: Option<toml::Value> = config_str
-        .as_ref()
-        .and_then(|s| toml::from_str(s).ok());
+    let config_parsed: Option<toml::Value> =
+        config_str.as_ref().and_then(|s| toml::from_str(s).ok());
 
     // Determine which theme to load
     // Priority: CLI flag > ZUSH_THEME env var > config file
