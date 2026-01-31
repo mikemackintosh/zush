@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.1](https://github.com/mikemackintosh/zush/compare/v1.7.0...v1.7.1) (2026-01-31)
+
+### 🐛 Bug Fixes
+
+* **fmt:** fix lint ([91fd69c](https://github.com/mikemackintosh/zush/commit/91fd69c3e9c7bec5cb76986c7fca450c8fd68c02))
+
+### 🔨 Chores
+
+* **themes:** update theme styles ([94489c6](https://github.com/mikemackintosh/zush/commit/94489c66509a8bd8828845d617aa4b421f6eb765))
+
 ## [1.7.0](https://github.com/mikemackintosh/zush/compare/v1.6.3...v1.7.0) (2026-01-28)
 
 ### ✨ Features
