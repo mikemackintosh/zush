@@ -58,8 +58,12 @@ typeset -g ZUSH_PROMPT_NEWLINE_AFTER="${ZUSH_PROMPT_NEWLINE_AFTER:-0}"
 [[ -z "$SAVEHIST" || "$SAVEHIST" -lt 1000 ]] && export SAVEHIST=50000
 
 # History options - append and share so sessions don't overwrite each other
-setopt INC_APPEND_HISTORY     # Add commands immediately (not at shell exit)
-setopt SHARE_HISTORY          # Share history between all sessions
+# IMPORTANT: SHARE_HISTORY and INC_APPEND_HISTORY are mutually exclusive.
+# SHARE_HISTORY already appends incrementally AND imports from other sessions.
+# Having both set causes history entries to be lost (especially for failed commands).
+# We explicitly disable INC_APPEND_HISTORY in case the user's .zshrc set it.
+setopt SHARE_HISTORY          # Share history between all sessions (includes incremental append)
+setopt NO_INC_APPEND_HISTORY  # Must be off when SHARE_HISTORY is on
 setopt HIST_IGNORE_DUPS       # Ignore duplicated commands in history list
 setopt HIST_IGNORE_SPACE      # Ignore commands that start with space
 setopt HIST_EXPIRE_DUPS_FIRST # Delete duplicates first when HISTFILE exceeds HISTSIZE
