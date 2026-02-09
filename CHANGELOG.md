@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.2](https://github.com/mikemackintosh/zush/compare/v1.7.1...v1.7.2) (2026-02-09)
+
+### 🐛 Bug Fixes
+
+* **history:** bug ([2c21233](https://github.com/mikemackintosh/zush/commit/2c2123314139c5f60dbdefd988ceaa1a4f907575))
+
 ## [1.7.1](https://github.com/mikemackintosh/zush/compare/v1.7.0...v1.7.1) (2026-01-31)
 
 ### 🐛 Bug Fixes
