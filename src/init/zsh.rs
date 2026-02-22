@@ -294,7 +294,7 @@ typeset -g ZUSH_LAST_EXIT_CODE=0
 typeset -g ZUSH_CMD_START_TIME=0
 typeset -g ZUSH_CMD_DURATION=0
 typeset -g ZUSH_PROMPT_RENDERED=0
-typeset -g ZUSH_PROMPT_LINES=3  # Number of lines in the current prompt (TODO: make dynamic)
+typeset -g ZUSH_PROMPT_LINES=3  # Number of lines in the current prompt (dynamically updated)
 typeset -g ZUSH_LAST_COMMAND=""
 
 # Generate unique session ID for history tracking (once per shell)
@@ -407,10 +407,19 @@ zush_precmd() {
 
 # Generate main prompt
 zush_prompt() {
-    $ZUSH_PROMPT_BIN --template main --format zsh $(_zush_theme_args) prompt \
+    local output=$($ZUSH_PROMPT_BIN --template main --format zsh $(_zush_theme_args) prompt \
         --context "$(_zush_full_context)" \
         --exit-code $ZUSH_LAST_EXIT_CODE \
-        --execution-time $ZUSH_CMD_DURATION
+        --execution-time $ZUSH_CMD_DURATION)
+
+    # Dynamically count prompt lines for accurate transient replacement
+    # Count newlines in the raw output (strip zsh %{...%} wrappers for counting)
+    local raw_output="${output//\%\{/}"
+    raw_output="${raw_output//\%\}/}"
+    local line_count=$(( $(echo -n "$raw_output" | wc -l) + 1 ))
+    ZUSH_PROMPT_LINES=$line_count
+
+    echo -n "$output"
 }
 
 # Setup hooks

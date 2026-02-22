@@ -12,7 +12,7 @@ pub struct GoModule {
 impl GoModule {
     pub fn new() -> Self {
         Self {
-            symbol: "🐹".to_string(),
+            symbol: "\u{e724}".to_string(),
             show_version: true,
         }
     }

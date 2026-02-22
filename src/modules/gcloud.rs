@@ -5,24 +5,17 @@ use anyhow::Result;
 
 pub struct GCloudModule {
     symbol: String,
-    show_config: bool,
 }
 
 impl GCloudModule {
     pub fn new() -> Self {
         Self {
-            symbol: "☁️".to_string(),
-            show_config: false,
+            symbol: "\u{f0c2}".to_string(),
         }
     }
 
     pub fn with_symbol(mut self, symbol: String) -> Self {
         self.symbol = symbol;
-        self
-    }
-
-    pub fn with_config(mut self, show_config: bool) -> Self {
-        self.show_config = show_config;
         self
     }
 
@@ -42,17 +35,23 @@ impl GCloudModule {
             return Some(project);
         }
 
-        // Read from gcloud config
+        // Read from gcloud config - check active config first, then default
         let config_dir = context.home.join(".config").join("gcloud");
-        let properties_file = config_dir.join("configurations").join("config_default");
+        let active_config_name = self.get_config_name(context).unwrap_or_else(|| "default".to_string());
+        let properties_file = config_dir.join("configurations").join(format!("config_{}", active_config_name));
 
         if context.fs.exists(&properties_file) {
             if let Ok(contents) = context.fs.read_to_string(&properties_file) {
                 // Parse INI-style config
                 for line in contents.lines() {
                     let trimmed = line.trim();
-                    if let Some(project) = trimmed.strip_prefix("project = ") {
-                        return Some(project.trim().to_string());
+                    if let Some(project) = trimmed.strip_prefix("project") {
+                        let project = project.trim().strip_prefix('=').map(|p| p.trim().to_string());
+                        if let Some(p) = project {
+                            if !p.is_empty() {
+                                return Some(p);
+                            }
+                        }
                     }
                 }
             }
@@ -84,15 +83,36 @@ impl GCloudModule {
         None
     }
 
-    /// Check if gcloud is configured
-    fn has_gcloud_config(&self, context: &ModuleContext) -> bool {
-        // Check for environment variables
+    /// Check if GCP is actively being used in the current context
+    fn is_active(&self, context: &ModuleContext) -> bool {
+        // Show if explicit GCP env vars are set
+        // (this means the user intentionally activated GCP for this session)
         context.has_env("CLOUDSDK_CORE_PROJECT")
             || context.has_env("GCP_PROJECT")
             || context.has_env("GOOGLE_CLOUD_PROJECT")
             || context.has_env("CLOUDSDK_ACTIVE_CONFIG_NAME")
-            // Check for config directory
-            || context.fs.exists(&context.home.join(".config").join("gcloud").join("configurations"))
+            // Show if current directory has GCP-related project files
+            || context.fs.has_file("app.yaml")         // App Engine
+            || context.fs.has_file("cloudbuild.yaml")
+            || context.fs.has_file("cloudbuild.json")
+            || context.fs.has_file(".gcloudignore")
+            || self.has_gcp_terraform(context)
+    }
+
+    /// Check if Terraform files reference Google provider
+    fn has_gcp_terraform(&self, context: &ModuleContext) -> bool {
+        if !context.fs.has_dir(".terraform") && !context.fs.has_file("main.tf") {
+            return false;
+        }
+        for file in &["main.tf", "providers.tf", "versions.tf", "terraform.tf"] {
+            let path = context.pwd.join(file);
+            if let Ok(contents) = context.fs.read_to_string(&path) {
+                if contents.contains("provider \"google\"") || contents.contains("google_") {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 
@@ -108,34 +128,34 @@ impl Module for GCloudModule {
     }
 
     fn should_display(&self, context: &ModuleContext) -> bool {
-        // Show if gcloud is configured
-        self.has_gcloud_config(context)
+        self.is_active(context)
     }
 
     fn render(&self, context: &ModuleContext) -> Result<String> {
-        let mut parts = vec![self.symbol.clone(), "gcp".to_string()];
+        // Label in blue (Google brand color)
+        let label = format!(
+            "\x1b[38;2;66;133;244m{}gcp\x1b[39m",
+            self.symbol
+        );
 
-        // Get project
+        // Detail: project + config name, dimmed in square brackets
+        let mut detail_parts = Vec::new();
         if let Some(project) = self.get_project(context) {
-            // Shorten long project IDs (e.g., my-company-production-12345 -> prod-12345)
-            let short_project = if project.len() > 20 {
-                // Take last part after last hyphen
-                project.split('-').last().unwrap_or(&project).to_string()
-            } else {
-                project
-            };
-
-            parts.push(short_project);
+            detail_parts.push(project);
+        }
+        if let Some(config) = self.get_config_name(context) {
+            detail_parts.push(format!("({})", config));
         }
 
-        // Add config name if requested and not default
-        if self.show_config {
-            if let Some(config) = self.get_config_name(context) {
-                parts.push(format!("({})", config));
-            }
+        if detail_parts.is_empty() {
+            Ok(label)
+        } else {
+            Ok(format!(
+                "{} \x1b[2m[{}]\x1b[22m",
+                label,
+                detail_parts.join(" ")
+            ))
         }
-
-        Ok(parts.join(" "))
     }
 
     fn metadata(&self) -> ModuleMetadata {

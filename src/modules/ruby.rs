@@ -11,7 +11,7 @@ pub struct RubyModule {
 impl RubyModule {
     pub fn new() -> Self {
         Self {
-            symbol: "💎".to_string(),
+            symbol: "\u{e739}".to_string(),
             show_version: true,
         }
     }

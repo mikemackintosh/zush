@@ -11,7 +11,7 @@ pub struct RustModule {
 impl RustModule {
     pub fn new() -> Self {
         Self {
-            symbol: "🦀".to_string(),
+            symbol: "\u{e7a8}".to_string(),
             show_version: false,
         }
     }

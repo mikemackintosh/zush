@@ -12,7 +12,7 @@ pub struct PythonModule {
 impl PythonModule {
     pub fn new() -> Self {
         Self {
-            symbol: "🐍".to_string(),
+            symbol: "\u{e73c}".to_string(),
             show_version: false,
         }
     }

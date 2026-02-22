@@ -10,7 +10,7 @@ pub struct TerraformModule {
 impl TerraformModule {
     pub fn new() -> Self {
         Self {
-            symbol: "🏗️".to_string(),
+            symbol: "\u{f1b3}".to_string(),
         }
     }
 

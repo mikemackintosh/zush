@@ -132,11 +132,17 @@ impl Module for KubernetesModule {
     }
 
     fn should_display(&self, context: &ModuleContext) -> bool {
-        // Show if KUBECONFIG is set or ~/.kube/config exists
-        context.has_env("KUBECONFIG") || {
-            let kubeconfig_path = context.home.join(".kube").join("config");
-            context.fs.exists(&kubeconfig_path)
-        }
+        // Only show when explicitly activated via env var or in a k8s project directory
+        context.has_env("KUBECONFIG")
+            || context.has_env("KUBECTL_CONTEXT_NAMESPACE")
+            || context.fs.has_file("k8s.yaml")
+            || context.fs.has_file("k8s.yml")
+            || context.fs.has_file("skaffold.yaml")
+            || context.fs.has_file("helmfile.yaml")
+            || context.fs.has_dir("k8s")
+            || context.fs.has_dir("kubernetes")
+            || context.fs.has_dir("helm")
+            || context.fs.has_dir("charts")
     }
 
     fn render(&self, context: &ModuleContext) -> Result<String> {

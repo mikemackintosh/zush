@@ -11,7 +11,7 @@ pub struct DockerModule {
 impl DockerModule {
     pub fn new() -> Self {
         Self {
-            symbol: "🐳".to_string(),
+            symbol: "\u{f308}".to_string(),
             show_context: false,
         }
     }

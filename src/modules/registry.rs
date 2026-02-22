@@ -52,8 +52,9 @@ impl ModuleRegistry {
         registry.register(Box::new(super::terraform::TerraformModule::new()));
         registry.register(Box::new(super::gcloud::GCloudModule::new()));
 
-        // Enable all modules by default
+        // Enable all modules by default (sorted for deterministic order)
         registry.enabled = registry.modules.keys().cloned().collect();
+        registry.enabled.sort();
 
         registry
     }

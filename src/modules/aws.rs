@@ -11,7 +11,7 @@ pub struct AwsModule {
 impl AwsModule {
     pub fn new() -> Self {
         Self {
-            symbol: "☁️".to_string(),
+            symbol: "\u{f0c2}".to_string(),
             show_region: true,
         }
     }
@@ -59,19 +59,79 @@ impl AwsModule {
             return Some(region);
         }
 
+        // Read from AWS config file for the active profile
+        let config_file = context.home.join(".aws").join("config");
+        if context.fs.exists(&config_file) {
+            if let Ok(contents) = context.fs.read_to_string(&config_file) {
+                let profile = self.get_profile(context).unwrap_or_default();
+                let section = if profile == "default" {
+                    "[default]".to_string()
+                } else {
+                    format!("[profile {}]", profile)
+                };
+
+                let mut in_section = false;
+                for line in contents.lines() {
+                    let trimmed = line.trim();
+                    if trimmed == section {
+                        in_section = true;
+                        continue;
+                    }
+                    if in_section && trimmed.starts_with('[') {
+                        break;
+                    }
+                    if in_section {
+                        if let Some(region) = trimmed.strip_prefix("region") {
+                            let region = region.trim().strip_prefix('=').map(|r| r.trim().to_string());
+                            if let Some(r) = region {
+                                if !r.is_empty() {
+                                    return Some(r);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         None
     }
 
-    /// Check if AWS credentials are configured
-    fn has_credentials(&self, context: &ModuleContext) -> bool {
-        // Check for environment variables
+    /// Check if AWS is actively being used in the current context
+    fn is_active(&self, context: &ModuleContext) -> bool {
+        // Show if an explicit profile or credentials are set via env vars
+        // (this means the user intentionally activated AWS for this session)
         context.has_env("AWS_PROFILE")
             || context.has_env("AWS_DEFAULT_PROFILE")
             || context.has_env("AWS_ACCESS_KEY_ID")
             || context.has_env("AWS_SESSION_TOKEN")
-            // Check for config file
-            || context.fs.exists(&context.home.join(".aws").join("config"))
-            || context.fs.exists(&context.home.join(".aws").join("credentials"))
+            // Show if current directory has AWS-related project files
+            || context.fs.has_dir(".aws-sam")
+            || context.fs.has_dir("cdk.out")
+            || context.fs.has_file("samconfig.toml")
+            || context.fs.has_file("cdk.json")
+            || context.fs.has_file("serverless.yml")
+            || context.fs.has_file("serverless.yaml")
+            || context.fs.has_file("template.yaml")  // SAM/CloudFormation
+            || self.has_aws_terraform(context)
+    }
+
+    /// Check if Terraform files reference AWS provider
+    fn has_aws_terraform(&self, context: &ModuleContext) -> bool {
+        // Only check if we're in a Terraform project
+        if !context.fs.has_dir(".terraform") && !context.fs.has_file("main.tf") {
+            return false;
+        }
+        // Check for AWS provider in common Terraform files
+        for file in &["main.tf", "providers.tf", "versions.tf", "terraform.tf"] {
+            let path = context.pwd.join(file);
+            if let Ok(contents) = context.fs.read_to_string(&path) {
+                if contents.contains("provider \"aws\"") || contents.contains("aws_") {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 
@@ -87,25 +147,23 @@ impl Module for AwsModule {
     }
 
     fn should_display(&self, context: &ModuleContext) -> bool {
-        // Show if AWS credentials are configured
-        self.has_credentials(context)
+        self.is_active(context)
     }
 
     fn render(&self, context: &ModuleContext) -> Result<String> {
-        let mut parts = vec![self.symbol.clone()];
+        // Label in orange (AWS brand color)
+        let label = format!(
+            "\x1b[38;2;255;153;0m{}aws\x1b[39m",
+            self.symbol
+        );
 
-        // Get profile
+        // Detail: profile + region, dimmed
+        let mut detail_parts = Vec::new();
         if let Some(profile) = self.get_profile(context) {
-            // Don't show "default" to keep it clean
-            if profile != "default" {
-                parts.push(profile);
-            }
+            detail_parts.push(profile);
         }
-
-        // Add region if requested
         if self.show_region {
             if let Some(region) = self.get_region(context) {
-                // Shorten region names (us-east-1 -> use1)
                 let short_region = region
                     .replace("us-east-", "use")
                     .replace("us-west-", "usw")
@@ -113,17 +171,19 @@ impl Module for AwsModule {
                     .replace("eu-central-", "euc")
                     .replace("ap-southeast-", "apse")
                     .replace("ap-northeast-", "apne");
-
-                parts.push(format!("({})", short_region));
+                detail_parts.push(format!("({})", short_region));
             }
         }
 
-        // If only symbol, add "aws" label
-        if parts.len() == 1 {
-            parts.push("aws".to_string());
+        if detail_parts.is_empty() {
+            Ok(label)
+        } else {
+            Ok(format!(
+                "{} \x1b[2m{}\x1b[22m",
+                label,
+                detail_parts.join(" ")
+            ))
         }
-
-        Ok(parts.join(" "))
     }
 
     fn metadata(&self) -> ModuleMetadata {
