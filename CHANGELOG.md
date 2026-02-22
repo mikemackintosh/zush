@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.3](https://github.com/mikemackintosh/zush/compare/v1.7.2...v1.7.3) (2026-02-22)
+
+### ⚡ Performance
+
+* comprehensive performance optimizations for large repositories ([4cfa758](https://github.com/mikemackintosh/zush/commit/4cfa7584f2a439f3f984e76f254a46599ca2ed9d))
+
 ## [1.7.2](https://github.com/mikemackintosh/zush/compare/v1.7.1...v1.7.2) (2026-02-09)
 
 ### 🐛 Bug Fixes
