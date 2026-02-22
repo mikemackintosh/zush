@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.0](https://github.com/mikemackintosh/zush/compare/v1.8.0...v1.9.0) (2026-02-22)
+
+### ✨ Features
+
+* add aws and gcp modules ([3152c12](https://github.com/mikemackintosh/zush/commit/3152c123feb007612952b9158689634c828bbed9))
+
 ## [1.8.0](https://github.com/mikemackintosh/zush/compare/v1.7.3...v1.8.0) (2026-02-22)
 
 ### ✨ Features
