@@ -46,6 +46,12 @@ impl ModuleRegistry {
         registry.register(Box::new(super::rust_lang::RustModule::new()));
         registry.register(Box::new(super::docker::DockerModule::new()));
 
+        // Cloud/Infrastructure modules
+        registry.register(Box::new(super::kubernetes::KubernetesModule::new()));
+        registry.register(Box::new(super::aws::AwsModule::new()));
+        registry.register(Box::new(super::terraform::TerraformModule::new()));
+        registry.register(Box::new(super::gcloud::GCloudModule::new()));
+
         // Enable all modules by default
         registry.enabled = registry.modules.keys().cloned().collect();
 

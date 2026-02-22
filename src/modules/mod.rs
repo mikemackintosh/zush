@@ -6,13 +6,17 @@
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
+pub mod aws;
 pub mod docker;
+pub mod gcloud;
 pub mod go;
+pub mod kubernetes;
 pub mod node;
 pub mod python;
 pub mod registry;
 pub mod ruby;
 pub mod rust_lang;
+pub mod terraform;
 
 /// Module trait - implemented by all prompt modules
 pub trait Module: Send + Sync {
