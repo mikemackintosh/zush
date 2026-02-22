@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0](https://github.com/mikemackintosh/zush/compare/v1.7.3...v1.8.0) (2026-02-22)
+
+### ✨ Features
+
+* add cloud and infrastructure modules (kubernetes, aws, terraform, gcloud) ([c916d90](https://github.com/mikemackintosh/zush/commit/c916d9061f97c5ce4e2f91e58751dce0669aabed))
+
 ## [1.7.3](https://github.com/mikemackintosh/zush/compare/v1.7.2...v1.7.3) (2026-02-22)
 
 ### ⚡ Performance
