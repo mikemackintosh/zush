@@ -60,7 +60,9 @@ tera-templates = ["tera"]
 history = ["fs4", "ratatui", "nucleo", "nucleo-matcher", "libc", "tempfile"]
 
 [profile.release]
-lto = "thin"
-codegen-units = 1
-strip = true
-opt-level = 3
+lto = "fat"              # Fat LTO for maximum optimization (slower build, faster runtime)
+codegen-units = 1        # Better optimization at cost of compile time
+strip = true             # Strip symbols for smaller binary
+opt-level = 3            # Maximum optimization
+panic = "abort"          # Smaller binary, no unwinding
+overflow-checks = false  # Slightly faster (remove bounds checks in release)

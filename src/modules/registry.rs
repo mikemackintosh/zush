@@ -10,8 +10,9 @@ use std::time::{Duration, Instant};
 /// Global cache for module outputs (persists across prompt renders)
 static MODULE_CACHE: Mutex<Option<GlobalModuleCache>> = Mutex::new(None);
 
-/// Cache TTL for module outputs
-const MODULE_CACHE_TTL: Duration = Duration::from_millis(500);
+/// Cache TTL for module outputs - increased to 5s for better performance
+/// Modules rarely change within 5 seconds (entering/leaving venv, etc.)
+const MODULE_CACHE_TTL: Duration = Duration::from_secs(5);
 
 /// Get or initialize the global module cache
 fn get_or_init_cache<F, R>(f: F) -> R
@@ -102,10 +103,28 @@ impl ModuleRegistry {
 
     /// Render all enabled modules that should display
     pub fn render_all(&mut self, context: &ModuleContext) -> Vec<ModuleOutput> {
+        // Check if all modules are disabled via env var
+        if std::env::var("ZUSH_DISABLE_MODULES")
+            .map(|v| v == "1" || v.to_lowercase() == "true")
+            .unwrap_or(false)
+        {
+            return Vec::new();
+        }
+
         let mut outputs = Vec::new();
         let pwd = &context.pwd;
 
         for module_id in &self.enabled {
+            // Check if this specific module is disabled via env var
+            // E.g., ZUSH_DISABLE_PYTHON=1 or ZUSH_DISABLE_NODE=1
+            let env_var = format!("ZUSH_DISABLE_{}", module_id.to_uppercase());
+            if std::env::var(&env_var)
+                .map(|v| v == "1" || v.to_lowercase() == "true")
+                .unwrap_or(false)
+            {
+                continue;
+            }
+
             if let Some(module) = self.modules.get(module_id) {
                 // Check global cache first (keyed by module_id + pwd)
                 let cached = get_or_init_cache(|cache| cache.get(module_id, pwd));

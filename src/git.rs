@@ -1,5 +1,6 @@
 use git2::{Repository, StatusOptions, StatusShow};
 use serde_json::{json, Value};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -14,8 +15,9 @@ struct CacheEntry {
 /// Global cache for git status (avoids recalculating on rapid prompt renders)
 static GIT_CACHE: Mutex<Option<CacheEntry>> = Mutex::new(None);
 
-/// Cache TTL - 1 second is short enough to be responsive but helps with rapid Enter presses
-const CACHE_TTL: Duration = Duration::from_secs(1);
+/// Cache TTL - 5 seconds balances responsiveness with performance in large repos
+/// Most commands complete within 5s, so this avoids redundant git status calls
+const CACHE_TTL: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Default, Clone)]
 pub struct GitStatus {
@@ -60,25 +62,110 @@ pub fn get_git_status(path: &Path) -> Option<GitStatus> {
     Some(status)
 }
 
+/// Fast path: Read branch name directly from .git/HEAD (no libgit2)
+/// This is much faster than using Repository::head(), especially in huge repos
+fn read_branch_fast(git_dir: &Path) -> Option<String> {
+    let head_path = git_dir.join("HEAD");
+    let contents = fs::read_to_string(head_path).ok()?;
+
+    // Parse HEAD file
+    // Format is either:
+    // - "ref: refs/heads/branch-name" (normal branch)
+    // - "commit-hash" (detached HEAD)
+    let trimmed = contents.trim();
+    if let Some(ref_path) = trimmed.strip_prefix("ref: ") {
+        // Extract branch name from "refs/heads/branch-name"
+        ref_path
+            .strip_prefix("refs/heads/")
+            .map(|s| s.to_string())
+            .or_else(|| Some(ref_path.to_string()))
+    } else {
+        // Detached HEAD - return short hash
+        Some(trimmed.chars().take(7).collect())
+    }
+}
+
+/// Find .git directory from current path
+fn find_git_dir(mut path: &Path) -> Option<PathBuf> {
+    loop {
+        let git_dir = path.join(".git");
+
+        // Check if it's a directory
+        if git_dir.is_dir() {
+            return Some(git_dir);
+        }
+
+        // Check if it's a file (git worktree)
+        if git_dir.is_file() {
+            // Read the file to get actual git dir path
+            if let Ok(contents) = fs::read_to_string(&git_dir) {
+                if let Some(gitdir) = contents.trim().strip_prefix("gitdir: ") {
+                    return Some(PathBuf::from(gitdir));
+                }
+            }
+        }
+
+        // Move up to parent directory
+        path = path.parent()?;
+    }
+}
+
 /// Actually compute git status (internal, not cached)
 fn compute_git_status(path: &Path) -> Option<GitStatus> {
-    // Try to open repository - this is fast, just checks for .git
-    let repo = Repository::discover(path).ok()?;
-
     let mut status = GitStatus::default();
 
-    // Get current branch name
-    if let Ok(head) = repo.head() {
-        if let Some(branch_name) = head.shorthand() {
-            status.branch = branch_name.to_string();
+    // Fast path: Try to read branch name directly without libgit2
+    // This is much faster, especially for huge repositories
+    let git_dir = find_git_dir(path);
+    if let Some(ref dir) = git_dir {
+        if let Some(branch) = read_branch_fast(dir) {
+            status.branch = branch;
         }
     }
+
+    // If branch name failed, fall back to libgit2
+    if status.branch.is_empty() {
+        if let Ok(repo) = Repository::discover(path) {
+            if let Ok(head) = repo.head() {
+                if let Some(branch_name) = head.shorthand() {
+                    status.branch = branch_name.to_string();
+                }
+            }
+        }
+    }
+
+    // If still no branch name, we're not in a git repo
+    if status.branch.is_empty() {
+        return None;
+    }
+
+    // Check if minimal mode is enabled (for huge repos like 1GB+)
+    // Set ZUSH_GIT_MINIMAL=1 to only show branch name, skip all status checks
+    // This is much faster for very large repositories
+    let minimal_mode = std::env::var("ZUSH_GIT_MINIMAL")
+        .map(|v| v == "1" || v.to_lowercase() == "true")
+        .unwrap_or(false);
+
+    if minimal_mode {
+        // Skip status checking entirely - just return branch name
+        return Some(status);
+    }
+
+    // Need to open repository for status checking
+    let repo = Repository::discover(path).ok()?;
 
     // Get status - this reads .git/index directly
     let mut opts = StatusOptions::new();
     opts.show(StatusShow::IndexAndWorkdir);
-    opts.include_untracked(true);
-    opts.recurse_untracked_dirs(false);
+
+    // Check if untracked file scanning should be disabled (for large repos)
+    // Set ZUSH_GIT_DISABLE_UNTRACKED=1 to skip untracked file counting
+    let include_untracked = std::env::var("ZUSH_GIT_DISABLE_UNTRACKED")
+        .map(|v| v != "1" && v.to_lowercase() != "true")
+        .unwrap_or(true);
+
+    opts.include_untracked(include_untracked);
+    opts.recurse_untracked_dirs(false); // Don't recurse to improve performance
 
     if let Ok(statuses) = repo.statuses(Some(&mut opts)) {
         for entry in statuses.iter() {

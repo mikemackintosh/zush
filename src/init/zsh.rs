@@ -45,6 +45,29 @@ typeset -g ZUSH_PROMPT_NEWLINE_BEFORE="${ZUSH_PROMPT_NEWLINE_BEFORE:-1}"
 # Example: export ZUSH_PROMPT_NEWLINE_AFTER=1
 typeset -g ZUSH_PROMPT_NEWLINE_AFTER="${ZUSH_PROMPT_NEWLINE_AFTER:-0}"
 
+# ZUSH_GIT_MINIMAL - Minimal git mode (for huge repositories 1GB+)
+# Default: 0 (disabled)
+# Set to 1 to only show branch name, skip all git status checks
+# This dramatically improves performance in very large repositories
+# Example: export ZUSH_GIT_MINIMAL=1
+# Note: This only affects git status display, not repository detection
+
+# ZUSH_GIT_DISABLE_UNTRACKED - Disable untracked file scanning
+# Default: 0 (disabled)
+# Set to 1 to skip counting untracked files (improves performance with many untracked files)
+# Example: export ZUSH_GIT_DISABLE_UNTRACKED=1
+
+# ZUSH_DISABLE_MODULES - Disable all language/environment modules
+# Default: 0 (disabled)
+# Set to 1 to disable all modules (Python, Node, Go, Ruby, Rust, Docker detection)
+# This can significantly improve performance if you don't use module indicators
+# Example: export ZUSH_DISABLE_MODULES=1
+
+# ZUSH_DISABLE_<MODULE> - Disable specific modules
+# Set to 1 to disable a specific module (PYTHON, NODE, GO, RUBY, RUST, DOCKER)
+# Example: export ZUSH_DISABLE_PYTHON=1
+# Example: export ZUSH_DISABLE_NODE=1
+
 # ============================================================================
 # HISTORY CONFIGURATION - Ensure history is saved and shared across sessions
 # These are set only if not already configured, to avoid overriding user prefs

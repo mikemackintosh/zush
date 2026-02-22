@@ -19,10 +19,70 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use buffer::TerminalBuffer;
 use cli::{Cli, Commands};
 use template::TemplateEngine;
+
+/// Cache entry for config/theme files
+struct FileCache {
+    contents: String,
+    modified: std::time::SystemTime,
+    timestamp: Instant,
+}
+
+/// Global cache for config and theme files
+static FILE_CACHE: Mutex<Option<HashMap<PathBuf, FileCache>>> = Mutex::new(None);
+
+/// Cache TTL - 10 seconds (config files rarely change during prompt rendering)
+const FILE_CACHE_TTL: Duration = Duration::from_secs(10);
+
+/// Read a file with caching based on modification time
+fn read_file_cached(path: &PathBuf) -> Result<String> {
+    // Check cache first
+    if let Ok(mut cache_guard) = FILE_CACHE.lock() {
+        let cache = cache_guard.get_or_insert_with(HashMap::new);
+        if let Some(entry) = cache.get(path) {
+            // Check if cache is still valid (TTL not expired)
+            if entry.timestamp.elapsed() < FILE_CACHE_TTL {
+                // Also verify file hasn't been modified
+                if let Ok(metadata) = fs::metadata(path) {
+                    if let Ok(modified) = metadata.modified() {
+                        if modified == entry.modified {
+                            return Ok(entry.contents.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Cache miss or expired - read file
+    let contents = fs::read_to_string(path)
+        .with_context(|| format!("Failed to read file: {:?}", path))?;
+
+    // Get modification time
+    let modified = fs::metadata(path)?
+        .modified()
+        .unwrap_or_else(|_| std::time::SystemTime::now());
+
+    // Update cache
+    if let Ok(mut cache_guard) = FILE_CACHE.lock() {
+        let cache = cache_guard.get_or_insert_with(HashMap::new);
+        cache.insert(
+            path.clone(),
+            FileCache {
+                contents: contents.clone(),
+                modified,
+                timestamp: Instant::now(),
+            },
+        );
+    }
+
+    Ok(contents)
+}
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -73,8 +133,8 @@ fn load_theme(theme_name: &str) -> Result<String> {
     };
 
     if theme_path.exists() {
-        fs::read_to_string(&theme_path)
-            .with_context(|| format!("Failed to read theme file: {:?}", theme_path))
+        // Use cached file read
+        read_file_cached(&theme_path)
     } else {
         Err(anyhow::anyhow!("Theme file not found: {:?}", theme_path))
     }
@@ -100,7 +160,8 @@ fn render_prompt(
 
     let config_str = if let Some(path) = &config_path {
         if path.exists() {
-            fs::read_to_string(path).ok()
+            // Use cached file read for config
+            read_file_cached(path).ok()
         } else {
             None
         }
