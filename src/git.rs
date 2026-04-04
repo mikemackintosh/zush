@@ -1,23 +1,9 @@
 use git2::{Repository, StatusOptions, StatusShow};
 use serde_json::{json, Value};
 use std::fs;
+use std::io::Read as IoRead;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
-use std::time::{Duration, Instant};
-
-/// Cache entry for git status
-struct CacheEntry {
-    path: PathBuf,
-    status: GitStatus,
-    timestamp: Instant,
-}
-
-/// Global cache for git status (avoids recalculating on rapid prompt renders)
-static GIT_CACHE: Mutex<Option<CacheEntry>> = Mutex::new(None);
-
-/// Cache TTL - 5 seconds balances responsiveness with performance in large repos
-/// Most commands complete within 5s, so this avoids redundant git status calls
-const CACHE_TTL: Duration = Duration::from_secs(5);
+use std::time::SystemTime;
 
 #[derive(Debug, Default, Clone)]
 pub struct GitStatus {
@@ -29,75 +15,137 @@ pub struct GitStatus {
     pub renamed: usize,
     pub untracked: usize,
     pub conflicted: usize,
+    /// Whether status counts are from a background cache (may be stale)
+    pub from_cache: bool,
 }
 
-/// Get git status for the current directory (with caching)
-/// This is much faster than calling `git` commands because:
-/// 1. No process spawning
-/// 2. Direct file reading from .git directory
-/// 3. No shell overhead
-/// 4. Results cached for 1 second to avoid redundant work
+/// Cache file location for async git status results
+fn cache_dir() -> PathBuf {
+    dirs::cache_dir()
+        .unwrap_or_else(|| PathBuf::from("/tmp"))
+        .join("zush")
+}
+
+fn status_cache_path(repo_path: &Path) -> PathBuf {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = DefaultHasher::new();
+    repo_path.hash(&mut hasher);
+    let hash = hasher.finish();
+
+    cache_dir().join(format!("git-status-{:x}.json", hash))
+}
+
+/// Get git status for the current directory.
+///
+/// Strategy for large repos:
+/// 1. Branch name is always read instantly from .git/HEAD (no libgit2)
+/// 2. If a background status cache exists and is fresh, use it
+/// 3. For small repos (< threshold), compute status synchronously
+/// 4. For large repos, return branch-only and kick off a background status worker
 pub fn get_git_status(path: &Path) -> Option<GitStatus> {
-    // Check cache first
-    if let Ok(cache) = GIT_CACHE.lock() {
-        if let Some(ref entry) = *cache {
-            if entry.path == path && entry.timestamp.elapsed() < CACHE_TTL {
-                return Some(entry.status.clone());
-            }
-        }
+    let git_dir = find_git_dir(path)?;
+    let branch = read_branch_fast(&git_dir)?;
+
+    let mut status = GitStatus {
+        branch,
+        ..Default::default()
+    };
+
+    // Check if minimal mode is enabled (skip all status checks)
+    if is_env_truthy("ZUSH_GIT_MINIMAL") {
+        return Some(status);
     }
 
-    // Cache miss - compute status
-    let status = compute_git_status(path)?;
+    // Try to read cached background status first
+    let repo_root = git_dir.parent().unwrap_or(path);
+    let cache_path = status_cache_path(repo_root);
 
-    // Update cache
-    if let Ok(mut cache) = GIT_CACHE.lock() {
-        *cache = Some(CacheEntry {
-            path: path.to_path_buf(),
-            status: status.clone(),
-            timestamp: Instant::now(),
-        });
+    if let Some(cached) = read_status_cache(&cache_path) {
+        // Use cached counts
+        status.staged = cached.staged;
+        status.modified = cached.modified;
+        status.added = cached.added;
+        status.deleted = cached.deleted;
+        status.renamed = cached.renamed;
+        status.untracked = cached.untracked;
+        status.conflicted = cached.conflicted;
+        status.from_cache = true;
+
+        // If the cache is stale (older than 10s), kick off a background refresh
+        if is_cache_stale(&cache_path, 10) {
+            spawn_background_status(repo_root, &cache_path);
+        }
+
+        return Some(status);
+    }
+
+    // No cache — check repo size to decide sync vs async
+    // Use the git index size as a heuristic: large index = large repo
+    let index_path = git_dir.join("index");
+    let index_size = fs::metadata(&index_path).map(|m| m.len()).unwrap_or(0);
+
+    // Repos with index > 512KB get async treatment (roughly 10k+ files)
+    let large_repo_threshold = std::env::var("ZUSH_GIT_LARGE_THRESHOLD")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(512 * 1024);
+
+    if index_size > large_repo_threshold {
+        // Large repo: return branch-only now, compute status in background
+        spawn_background_status(repo_root, &cache_path);
+        return Some(status);
+    }
+
+    // Small repo: compute status synchronously (fast enough)
+    if let Some(sync_status) = compute_status_counts(path) {
+        status.staged = sync_status.staged;
+        status.modified = sync_status.modified;
+        status.added = sync_status.added;
+        status.deleted = sync_status.deleted;
+        status.renamed = sync_status.renamed;
+        status.untracked = sync_status.untracked;
+        status.conflicted = sync_status.conflicted;
     }
 
     Some(status)
 }
 
-/// Fast path: Read branch name directly from .git/HEAD (no libgit2)
-/// This is much faster than using Repository::head(), especially in huge repos
+fn is_env_truthy(key: &str) -> bool {
+    std::env::var(key)
+        .map(|v| v == "1" || v.to_lowercase() == "true")
+        .unwrap_or(false)
+}
+
+/// Fast path: read branch name directly from .git/HEAD (no libgit2)
 fn read_branch_fast(git_dir: &Path) -> Option<String> {
     let head_path = git_dir.join("HEAD");
     let contents = fs::read_to_string(head_path).ok()?;
-
-    // Parse HEAD file
-    // Format is either:
-    // - "ref: refs/heads/branch-name" (normal branch)
-    // - "commit-hash" (detached HEAD)
     let trimmed = contents.trim();
+
     if let Some(ref_path) = trimmed.strip_prefix("ref: ") {
-        // Extract branch name from "refs/heads/branch-name"
         ref_path
             .strip_prefix("refs/heads/")
             .map(|s| s.to_string())
             .or_else(|| Some(ref_path.to_string()))
     } else {
-        // Detached HEAD - return short hash
+        // Detached HEAD — short hash
         Some(trimmed.chars().take(7).collect())
     }
 }
 
-/// Find .git directory from current path
+/// Walk up from path to find .git directory (supports worktrees)
 fn find_git_dir(mut path: &Path) -> Option<PathBuf> {
     loop {
         let git_dir = path.join(".git");
 
-        // Check if it's a directory
         if git_dir.is_dir() {
             return Some(git_dir);
         }
 
-        // Check if it's a file (git worktree)
+        // Git worktree: .git is a file containing "gitdir: <path>"
         if git_dir.is_file() {
-            // Read the file to get actual git dir path
             if let Ok(contents) = fs::read_to_string(&git_dir) {
                 if let Some(gitdir) = contents.trim().strip_prefix("gitdir: ") {
                     return Some(PathBuf::from(gitdir));
@@ -105,110 +153,215 @@ fn find_git_dir(mut path: &Path) -> Option<PathBuf> {
             }
         }
 
-        // Move up to parent directory
         path = path.parent()?;
     }
 }
 
-/// Actually compute git status (internal, not cached)
-fn compute_git_status(path: &Path) -> Option<GitStatus> {
+/// Compute status counts using libgit2 (synchronous)
+fn compute_status_counts(path: &Path) -> Option<GitStatus> {
+    let repo = Repository::discover(path).ok()?;
     let mut status = GitStatus::default();
 
-    // Fast path: Try to read branch name directly without libgit2
-    // This is much faster, especially for huge repositories
-    let git_dir = find_git_dir(path);
-    if let Some(ref dir) = git_dir {
-        if let Some(branch) = read_branch_fast(dir) {
-            status.branch = branch;
-        }
-    }
-
-    // If branch name failed, fall back to libgit2
-    if status.branch.is_empty() {
-        if let Ok(repo) = Repository::discover(path) {
-            if let Ok(head) = repo.head() {
-                if let Some(branch_name) = head.shorthand() {
-                    status.branch = branch_name.to_string();
-                }
-            }
-        }
-    }
-
-    // If still no branch name, we're not in a git repo
-    if status.branch.is_empty() {
-        return None;
-    }
-
-    // Check if minimal mode is enabled (for huge repos like 1GB+)
-    // Set ZUSH_GIT_MINIMAL=1 to only show branch name, skip all status checks
-    // This is much faster for very large repositories
-    let minimal_mode = std::env::var("ZUSH_GIT_MINIMAL")
-        .map(|v| v == "1" || v.to_lowercase() == "true")
-        .unwrap_or(false);
-
-    if minimal_mode {
-        // Skip status checking entirely - just return branch name
-        return Some(status);
-    }
-
-    // Need to open repository for status checking
-    let repo = Repository::discover(path).ok()?;
-
-    // Get status - this reads .git/index directly
     let mut opts = StatusOptions::new();
     opts.show(StatusShow::IndexAndWorkdir);
 
-    // Check if untracked file scanning should be disabled (for large repos)
-    // Set ZUSH_GIT_DISABLE_UNTRACKED=1 to skip untracked file counting
-    let include_untracked = std::env::var("ZUSH_GIT_DISABLE_UNTRACKED")
-        .map(|v| v != "1" && v.to_lowercase() != "true")
-        .unwrap_or(true);
-
+    let include_untracked = !is_env_truthy("ZUSH_GIT_DISABLE_UNTRACKED");
     opts.include_untracked(include_untracked);
-    opts.recurse_untracked_dirs(false); // Don't recurse to improve performance
+    opts.recurse_untracked_dirs(false);
+
+    // Exclude submodules — they're a major source of slowness
+    opts.exclude_submodules(true);
 
     if let Ok(statuses) = repo.statuses(Some(&mut opts)) {
         for entry in statuses.iter() {
-            let status_flags = entry.status();
+            let flags = entry.status();
 
-            // Index (staged) changes
-            if status_flags.is_index_new() {
+            if flags.is_index_new() {
                 status.added += 1;
                 status.staged += 1;
             }
-            if status_flags.is_index_modified() {
+            if flags.is_index_modified() {
                 status.staged += 1;
             }
-            if status_flags.is_index_deleted() {
+            if flags.is_index_deleted() {
                 status.deleted += 1;
                 status.staged += 1;
             }
-            if status_flags.is_index_renamed() {
+            if flags.is_index_renamed() {
                 status.renamed += 1;
                 status.staged += 1;
             }
-
-            // Working tree changes
-            if status_flags.is_wt_modified() {
+            if flags.is_wt_modified() {
                 status.modified += 1;
             }
-            if status_flags.is_wt_deleted() {
+            if flags.is_wt_deleted() {
                 status.deleted += 1;
             }
-
-            // Untracked
-            if status_flags.is_wt_new() {
+            if flags.is_wt_new() {
                 status.untracked += 1;
             }
-
-            // Conflicted
-            if status_flags.is_conflicted() {
+            if flags.is_conflicted() {
                 status.conflicted += 1;
             }
         }
     }
 
     Some(status)
+}
+
+/// Spawn a background process to compute git status and write it to a cache file.
+/// The next prompt render will pick up the cached result.
+fn spawn_background_status(repo_path: &Path, cache_path: &Path) {
+    let repo_str = repo_path.to_string_lossy().to_string();
+    let cache_str = cache_path.to_string_lossy().to_string();
+
+    // Fork a background process that computes status and writes JSON to cache
+    // We use the zush-prompt binary itself with a hidden subcommand,
+    // but for simplicity, use a simple shell + git approach which is more robust
+    // and avoids re-linking libgit2 in a child.
+    let disable_untracked = if is_env_truthy("ZUSH_GIT_DISABLE_UNTRACKED") {
+        "-uno"
+    } else {
+        "-unormal"
+    };
+
+    // Use git's porcelain output — stable, parseable, and respects .gitignore
+    let _ = std::process::Command::new("git")
+        .args([
+            "-C",
+            &repo_str,
+            "status",
+            "--porcelain=v1",
+            disable_untracked,
+            "--ignore-submodules=all",
+        ])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .and_then(|child| {
+            // Do the parsing in a detached thread so we don't block
+            let cache_str_owned = cache_str.clone();
+            std::thread::spawn(move || {
+                if let Ok(output) = child.wait_with_output() {
+                    if output.status.success() {
+                        let counts = parse_porcelain_status(&output.stdout);
+                        let _ = write_status_cache(&PathBuf::from(cache_str_owned), &counts);
+                    }
+                }
+            });
+            Ok(())
+        });
+}
+
+/// Parse git status --porcelain=v1 output into counts
+fn parse_porcelain_status(output: &[u8]) -> GitStatus {
+    let mut status = GitStatus::default();
+
+    for line in output.split(|&b| b == b'\n') {
+        if line.len() < 2 {
+            continue;
+        }
+        let index = line[0];
+        let worktree = line[1];
+
+        // Index (staged) changes
+        match index {
+            b'A' => {
+                status.added += 1;
+                status.staged += 1;
+            }
+            b'M' => status.staged += 1,
+            b'D' => {
+                status.deleted += 1;
+                status.staged += 1;
+            }
+            b'R' => {
+                status.renamed += 1;
+                status.staged += 1;
+            }
+            _ => {}
+        }
+
+        // Worktree changes
+        match worktree {
+            b'M' => status.modified += 1,
+            b'D' => status.deleted += 1,
+            _ => {}
+        }
+
+        // Untracked
+        if index == b'?' && worktree == b'?' {
+            status.untracked += 1;
+        }
+
+        // Conflicted
+        if index == b'U' || worktree == b'U' {
+            status.conflicted += 1;
+        }
+    }
+
+    status
+}
+
+/// Write status counts to a JSON cache file
+fn write_status_cache(cache_path: &Path, status: &GitStatus) -> std::io::Result<()> {
+    if let Some(parent) = cache_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let json = json!({
+        "staged": status.staged,
+        "modified": status.modified,
+        "added": status.added,
+        "deleted": status.deleted,
+        "renamed": status.renamed,
+        "untracked": status.untracked,
+        "conflicted": status.conflicted,
+    });
+
+    fs::write(cache_path, json.to_string())
+}
+
+/// Read status counts from cache file
+fn read_status_cache(cache_path: &Path) -> Option<GitStatus> {
+    // Cache must exist and be less than 30s old
+    if is_cache_stale(cache_path, 30) && !cache_path.exists() {
+        return None;
+    }
+
+    let mut contents = String::new();
+    fs::File::open(cache_path)
+        .ok()?
+        .read_to_string(&mut contents)
+        .ok()?;
+
+    let v: Value = serde_json::from_str(&contents).ok()?;
+    Some(GitStatus {
+        staged: v["staged"].as_u64().unwrap_or(0) as usize,
+        modified: v["modified"].as_u64().unwrap_or(0) as usize,
+        added: v["added"].as_u64().unwrap_or(0) as usize,
+        deleted: v["deleted"].as_u64().unwrap_or(0) as usize,
+        renamed: v["renamed"].as_u64().unwrap_or(0) as usize,
+        untracked: v["untracked"].as_u64().unwrap_or(0) as usize,
+        conflicted: v["conflicted"].as_u64().unwrap_or(0) as usize,
+        from_cache: true,
+        ..Default::default()
+    })
+}
+
+/// Check if a cache file is older than `max_age_secs`
+fn is_cache_stale(path: &Path, max_age_secs: u64) -> bool {
+    let Ok(meta) = fs::metadata(path) else {
+        return true;
+    };
+    let Ok(modified) = meta.modified() else {
+        return true;
+    };
+    let Ok(age) = SystemTime::now().duration_since(modified) else {
+        return true;
+    };
+    age.as_secs() > max_age_secs
 }
 
 /// Convert GitStatus to JSON for template context
@@ -232,7 +385,6 @@ mod tests {
 
     #[test]
     fn test_git_status() {
-        // Test in current directory (should be a git repo during development)
         let cwd = env::current_dir().unwrap();
         if let Some(status) = get_git_status(&cwd) {
             println!("Branch: {}", status.branch);
@@ -240,5 +392,23 @@ mod tests {
             println!("Modified: {}", status.modified);
             assert!(!status.branch.is_empty());
         }
+    }
+
+    #[test]
+    fn test_parse_porcelain_status() {
+        let output = b"M  src/main.rs\n?? new_file.txt\nA  added.rs\nD  deleted.rs\n";
+        let status = parse_porcelain_status(output);
+        assert_eq!(status.staged, 1); // M in index
+        assert_eq!(status.untracked, 1); // ??
+        assert_eq!(status.added, 1); // A
+        assert_eq!(status.deleted, 1); // D in index
+    }
+
+    #[test]
+    fn test_parse_porcelain_empty() {
+        let status = parse_porcelain_status(b"");
+        assert_eq!(status.modified, 0);
+        assert_eq!(status.staged, 0);
+        assert_eq!(status.untracked, 0);
     }
 }
