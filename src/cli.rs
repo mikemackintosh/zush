@@ -75,6 +75,22 @@ pub enum Commands {
         #[command(subcommand)]
         command: HistoryCommands,
     },
+
+    /// Internal: compute git status in background (not for direct use)
+    #[command(name = "_internal-git-status", hide = true)]
+    InternalGitStatus {
+        /// Repository root path
+        #[arg(long)]
+        repo_path: String,
+
+        /// Cache file path to write results
+        #[arg(long)]
+        cache_path: String,
+
+        /// Signal file to touch when done (notifies Zsh)
+        #[arg(long)]
+        signal_file: Option<String>,
+    },
 }
 
 /// History subcommands

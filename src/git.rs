@@ -17,6 +17,8 @@ pub struct GitStatus {
     pub conflicted: usize,
     /// Whether status counts are from a background cache (may be stale)
     pub from_cache: bool,
+    /// Whether a background worker was spawned (prompt should async-refresh)
+    pub async_pending: bool,
 }
 
 /// Cache file location for async git status results
@@ -35,6 +37,17 @@ fn status_cache_path(repo_path: &Path) -> PathBuf {
     let hash = hasher.finish();
 
     cache_dir().join(format!("git-status-{:x}.json", hash))
+}
+
+/// Path for the signal file that tells Zsh the background worker is done
+fn signal_file_path() -> Option<PathBuf> {
+    let zsh_pid = std::env::var("ZUSH_ZSH_PID").ok()?;
+    Some(cache_dir().join(format!("prompt-signal-{}", zsh_pid)))
+}
+
+/// Path for the lock file that prevents concurrent workers for the same repo
+fn lock_file_path(cache_path: &Path) -> PathBuf {
+    cache_path.with_extension("lock")
 }
 
 /// Get git status for the current directory.
@@ -75,14 +88,15 @@ pub fn get_git_status(path: &Path) -> Option<GitStatus> {
 
         // If the cache is stale (older than 10s), kick off a background refresh
         if is_cache_stale(&cache_path, 10) {
-            spawn_background_status(repo_root, &cache_path);
+            if spawn_background_status(repo_root, &cache_path) {
+                status.async_pending = true;
+            }
         }
 
         return Some(status);
     }
 
     // No cache — check repo size to decide sync vs async
-    // Use the git index size as a heuristic: large index = large repo
     let index_path = git_dir.join("index");
     let index_size = fs::metadata(&index_path).map(|m| m.len()).unwrap_or(0);
 
@@ -94,7 +108,9 @@ pub fn get_git_status(path: &Path) -> Option<GitStatus> {
 
     if index_size > large_repo_threshold {
         // Large repo: return branch-only now, compute status in background
-        spawn_background_status(repo_root, &cache_path);
+        if spawn_background_status(repo_root, &cache_path) {
+            status.async_pending = true;
+        }
         return Some(status);
     }
 
@@ -112,7 +128,7 @@ pub fn get_git_status(path: &Path) -> Option<GitStatus> {
     Some(status)
 }
 
-fn is_env_truthy(key: &str) -> bool {
+pub fn is_env_truthy(key: &str) -> bool {
     std::env::var(key)
         .map(|v| v == "1" || v.to_lowercase() == "true")
         .unwrap_or(false)
@@ -158,7 +174,7 @@ fn find_git_dir(mut path: &Path) -> Option<PathBuf> {
 }
 
 /// Compute status counts using libgit2 (synchronous)
-fn compute_status_counts(path: &Path) -> Option<GitStatus> {
+pub fn compute_status_counts(path: &Path) -> Option<GitStatus> {
     let repo = Repository::discover(path).ok()?;
     let mut status = GitStatus::default();
 
@@ -209,53 +225,119 @@ fn compute_status_counts(path: &Path) -> Option<GitStatus> {
     Some(status)
 }
 
-/// Spawn a background process to compute git status and write it to a cache file.
-/// The next prompt render will pick up the cached result.
-fn spawn_background_status(repo_path: &Path, cache_path: &Path) {
+/// Spawn a daemonized background process to compute git status.
+///
+/// Uses self-re-exec with a hidden subcommand + setsid() so the worker
+/// survives the parent prompt process exiting. Returns true if a worker
+/// was actually spawned (false if one is already running).
+fn spawn_background_status(repo_path: &Path, cache_path: &Path) -> bool {
+    let lock_path = lock_file_path(cache_path);
+
+    // Check if a worker is already running for this repo
+    if is_worker_running(&lock_path) {
+        return false;
+    }
+
     let repo_str = repo_path.to_string_lossy().to_string();
     let cache_str = cache_path.to_string_lossy().to_string();
 
-    // Fork a background process that computes status and writes JSON to cache
-    // We use the zush-prompt binary itself with a hidden subcommand,
-    // but for simplicity, use a simple shell + git approach which is more robust
-    // and avoids re-linking libgit2 in a child.
-    let disable_untracked = if is_env_truthy("ZUSH_GIT_DISABLE_UNTRACKED") {
-        "-uno"
-    } else {
-        "-unormal"
+    // Resolve our own binary path for self-re-exec
+    let exe = match std::env::current_exe() {
+        Ok(p) => p,
+        Err(_) => return false,
     };
 
-    // Use git's porcelain output — stable, parseable, and respects .gitignore
-    let _ = std::process::Command::new("git")
-        .args([
-            "-C",
-            &repo_str,
-            "status",
-            "--porcelain=v1",
-            disable_untracked,
-            "--ignore-submodules=all",
-        ])
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-        .and_then(|child| {
-            // Do the parsing in a detached thread so we don't block
-            let cache_str_owned = cache_str.clone();
-            std::thread::spawn(move || {
-                if let Ok(output) = child.wait_with_output() {
-                    if output.status.success() {
-                        let counts = parse_porcelain_status(&output.stdout);
-                        let _ = write_status_cache(&PathBuf::from(cache_str_owned), &counts);
-                    }
-                }
+    let mut cmd = std::process::Command::new(exe);
+    cmd.args([
+        "_internal-git-status",
+        "--repo-path",
+        &repo_str,
+        "--cache-path",
+        &cache_str,
+    ]);
+
+    // Pass signal file path if Zsh PID is available
+    if let Some(signal_path) = signal_file_path() {
+        cmd.args(["--signal-file", &signal_path.to_string_lossy()]);
+    }
+
+    cmd.stdin(std::process::Stdio::null());
+    cmd.stdout(std::process::Stdio::null());
+    cmd.stderr(std::process::Stdio::null());
+
+    // On Unix: create new session so the worker isn't killed when parent exits
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        unsafe {
+            cmd.pre_exec(|| {
+                libc::setsid();
+                Ok(())
             });
-            Ok(())
-        });
+        }
+    }
+
+    match cmd.spawn() {
+        Ok(_child) => {
+            // Don't wait on the child — it's daemonized
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+/// Check if a background worker is already running for this cache path
+fn is_worker_running(lock_path: &Path) -> bool {
+    let contents = match fs::read_to_string(lock_path) {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+
+    let pid: u32 = match contents.trim().parse() {
+        Ok(p) => p,
+        Err(_) => {
+            // Invalid lock file, clean up
+            let _ = fs::remove_file(lock_path);
+            return false;
+        }
+    };
+
+    // Check if the process is still alive
+    #[cfg(unix)]
+    {
+        let alive = unsafe { libc::kill(pid as libc::pid_t, 0) } == 0;
+        if !alive {
+            // Stale lock file, clean up
+            let _ = fs::remove_file(lock_path);
+        }
+        alive
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = pid;
+        // On non-Unix, just check if lock is recent (< 30s)
+        !is_cache_stale(lock_path, 30)
+    }
+}
+
+/// Write a lock file with current PID
+pub fn write_lock_file(cache_path: &Path) -> std::io::Result<()> {
+    let lock_path = lock_file_path(cache_path);
+    if let Some(parent) = lock_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(&lock_path, format!("{}", std::process::id()))
+}
+
+/// Remove the lock file
+pub fn remove_lock_file(cache_path: &Path) {
+    let lock_path = lock_file_path(cache_path);
+    let _ = fs::remove_file(lock_path);
 }
 
 /// Parse git status --porcelain=v1 output into counts
-fn parse_porcelain_status(output: &[u8]) -> GitStatus {
+pub fn parse_porcelain_status(output: &[u8]) -> GitStatus {
     let mut status = GitStatus::default();
 
     for line in output.split(|&b| b == b'\n') {
@@ -304,8 +386,8 @@ fn parse_porcelain_status(output: &[u8]) -> GitStatus {
     status
 }
 
-/// Write status counts to a JSON cache file
-fn write_status_cache(cache_path: &Path, status: &GitStatus) -> std::io::Result<()> {
+/// Write status counts to a JSON cache file (atomic via temp + rename)
+pub fn write_status_cache(cache_path: &Path, status: &GitStatus) -> std::io::Result<()> {
     if let Some(parent) = cache_path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -320,13 +402,26 @@ fn write_status_cache(cache_path: &Path, status: &GitStatus) -> std::io::Result<
         "conflicted": status.conflicted,
     });
 
-    fs::write(cache_path, json.to_string())
+    // Atomic write: write to temp file, then rename into place
+    let tmp_path = cache_path.with_extension("tmp");
+    fs::write(&tmp_path, json.to_string())?;
+    fs::rename(&tmp_path, cache_path)?;
+
+    Ok(())
+}
+
+/// Touch the signal file to notify Zsh that background data is ready
+pub fn touch_signal_file(signal_path: &Path) -> std::io::Result<()> {
+    if let Some(parent) = signal_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(signal_path, "")
 }
 
 /// Read status counts from cache file
 fn read_status_cache(cache_path: &Path) -> Option<GitStatus> {
     // Cache must exist and be less than 30s old
-    if is_cache_stale(cache_path, 30) && !cache_path.exists() {
+    if !cache_path.exists() || is_cache_stale(cache_path, 30) {
         return None;
     }
 
@@ -375,6 +470,8 @@ pub fn git_status_to_json(status: &GitStatus) -> Value {
         "git_renamed": status.renamed,
         "git_untracked": status.untracked,
         "git_conflicted": status.conflicted,
+        "git_from_cache": status.from_cache,
+        "git_async_pending": status.async_pending,
     })
 }
 
@@ -398,7 +495,7 @@ mod tests {
     fn test_parse_porcelain_status() {
         let output = b"M  src/main.rs\n?? new_file.txt\nA  added.rs\nD  deleted.rs\n";
         let status = parse_porcelain_status(output);
-        assert_eq!(status.staged, 1); // M in index
+        assert_eq!(status.staged, 3); // M + A + D in index
         assert_eq!(status.untracked, 1); // ??
         assert_eq!(status.added, 1); // A
         assert_eq!(status.deleted, 1); // D in index
@@ -410,5 +507,29 @@ mod tests {
         assert_eq!(status.modified, 0);
         assert_eq!(status.staged, 0);
         assert_eq!(status.untracked, 0);
+    }
+
+    #[test]
+    fn test_read_status_cache_missing_file() {
+        let path = PathBuf::from("/tmp/zush-test-nonexistent-cache.json");
+        assert!(read_status_cache(&path).is_none());
+    }
+
+    #[test]
+    fn test_write_and_read_cache() {
+        let tmp = std::env::temp_dir().join("zush-test-cache.json");
+        let status = GitStatus {
+            staged: 3,
+            modified: 2,
+            added: 1,
+            ..Default::default()
+        };
+        write_status_cache(&tmp, &status).unwrap();
+        let cached = read_status_cache(&tmp).unwrap();
+        assert_eq!(cached.staged, 3);
+        assert_eq!(cached.modified, 2);
+        assert_eq!(cached.added, 1);
+        assert!(cached.from_cache);
+        let _ = fs::remove_file(&tmp);
     }
 }

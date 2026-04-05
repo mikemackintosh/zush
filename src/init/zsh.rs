@@ -300,6 +300,13 @@ typeset -g ZUSH_LAST_COMMAND=""
 # Generate unique session ID for history tracking (once per shell)
 typeset -g ZUSH_SESSION_ID="${ZUSH_SESSION_ID:-$(head -c 8 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null || echo $$)}"
 
+# Export shell PID so background workers can signal us
+export ZUSH_ZSH_PID=$$
+
+# Async prompt refresh state
+typeset -g ZUSH_ASYNC_PENDING=0
+typeset -g ZUSH_ASYNC_FD=
+
 # ============================================================================
 # Helper functions to avoid code duplication
 # ============================================================================
@@ -354,6 +361,84 @@ _zush_render_transient() {
 }
 
 # ============================================================================
+# Async prompt refresh
+# ============================================================================
+
+# Signal file location (matches Rust binary's cache_dir/prompt-signal-PID)
+typeset -g ZUSH_SIGNAL_FILE="${${XDG_CACHE_HOME:-$HOME/.cache}/zush}/prompt-signal-$$"
+
+# Callback for zle -F: triggered when async watcher pipe becomes readable
+_zush_async_callback() {
+    local fd=$1
+
+    # Read and discard the byte from the pipe
+    if [[ -n "$fd" ]]; then
+        read -u $fd -k 1 2>/dev/null
+    fi
+
+    # Clean up the async watcher
+    _zush_async_stop
+
+    # Re-render the prompt with fresh data
+    zle && zle reset-prompt
+}
+
+# Start async polling for the signal file
+_zush_async_start() {
+    # Don't start if already watching
+    [[ $ZUSH_ASYNC_PENDING -eq 1 ]] && return
+
+    ZUSH_ASYNC_PENDING=1
+
+    # Create a self-pipe: background subshell watches for signal file,
+    # writes a byte to the pipe when it appears, which triggers zle -F
+    local pipe_dir="${TMPDIR:-/tmp}"
+    local pipe_file="${pipe_dir}/zush-async-pipe-$$"
+
+    # Clean up any stale pipe
+    rm -f "$pipe_file"
+
+    # Use a coprocess to create a pipe we can watch with zle -F
+    # The coprocess watches for the signal file and exits when found
+    coproc _zush_watcher {
+        for i in {1..50}; do  # Poll for up to 5 seconds (50 * 0.1s)
+            if [[ -f "$ZUSH_SIGNAL_FILE" ]]; then
+                rm -f "$ZUSH_SIGNAL_FILE"
+                echo "r"  # Signal ready
+                return 0
+            fi
+            sleep 0.1
+        done
+        echo "t"  # Timeout
+    }
+
+    # Get the read end of the coprocess pipe
+    if [[ -n "${_zush_watcher_PID}" ]]; then
+        ZUSH_ASYNC_FD=${_zush_watcher[0]}
+        zle -F $ZUSH_ASYNC_FD _zush_async_callback
+    fi
+}
+
+# Stop async watcher and clean up
+_zush_async_stop() {
+    ZUSH_ASYNC_PENDING=0
+
+    # Remove zle file descriptor watcher
+    if [[ -n "$ZUSH_ASYNC_FD" ]]; then
+        zle -F $ZUSH_ASYNC_FD 2>/dev/null
+        ZUSH_ASYNC_FD=
+    fi
+
+    # Kill coprocess if still running
+    if [[ -n "${_zush_watcher_PID}" ]]; then
+        kill "${_zush_watcher_PID}" 2>/dev/null
+    fi
+
+    # Clean up signal file
+    rm -f "$ZUSH_SIGNAL_FILE"
+}
+
+# ============================================================================
 # Hook functions
 # ============================================================================
 
@@ -373,6 +458,9 @@ zush_preexec() {
 # Precmd hook - called before prompt display
 zush_precmd() {
     ZUSH_LAST_EXIT_CODE=$?
+
+    # Stop any pending async watcher from previous prompt
+    _zush_async_stop
 
     # Calculate command duration
     if [[ $ZUSH_CMD_START_TIME -gt 0 ]]; then
@@ -418,6 +506,19 @@ zush_prompt() {
     raw_output="${raw_output//\%\}/}"
     local line_count=$(( $(echo -n "$raw_output" | wc -l) + 1 ))
     ZUSH_PROMPT_LINES=$line_count
+
+    # If the signal file already exists (background worker finished quickly),
+    # just use the output as-is (it already has fresh data from the re-render).
+    # Otherwise, if async work was spawned, start watching for completion.
+    if [[ -f "$ZUSH_SIGNAL_FILE" ]]; then
+        rm -f "$ZUSH_SIGNAL_FILE"
+    else
+        # Check if a background worker is running by looking for lock files
+        local cache_dir="${${XDG_CACHE_HOME:-$HOME/.cache}/zush}"
+        if [[ -n "$(find "$cache_dir" -name 'git-status-*.lock' -newer /dev/null 2>/dev/null | head -1)" ]]; then
+            _zush_async_start
+        fi
+    fi
 
     echo -n "$output"
 }

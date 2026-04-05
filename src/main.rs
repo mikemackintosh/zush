@@ -97,6 +97,13 @@ fn main() -> Result<()> {
         Some(Commands::Config) => {
             init::print_default_config()?;
         }
+        Some(Commands::InternalGitStatus {
+            repo_path,
+            cache_path,
+            signal_file,
+        }) => {
+            handle_internal_git_status(repo_path, cache_path, signal_file.as_deref())?;
+        }
         #[cfg(feature = "history")]
         Some(Commands::History { command }) => {
             handle_history_command(command)?;
@@ -113,6 +120,63 @@ fn main() -> Result<()> {
             render_prompt(&cli, None, None, None)?;
         }
     }
+
+    Ok(())
+}
+
+/// Handle the internal git status background worker subcommand.
+/// This runs as a daemonized child process, computes git status,
+/// writes the result to a cache file, and touches a signal file.
+fn handle_internal_git_status(
+    repo_path: &str,
+    cache_path: &str,
+    signal_file: Option<&str>,
+) -> Result<()> {
+    let cache = PathBuf::from(cache_path);
+
+    // Write lock file so other prompt renders know we're working
+    git::write_lock_file(&cache)?;
+
+    // Compute git status using git porcelain (more robust than libgit2 for background)
+    let disable_untracked = if git::is_env_truthy("ZUSH_GIT_DISABLE_UNTRACKED") {
+        "-uno"
+    } else {
+        "-unormal"
+    };
+
+    let output = std::process::Command::new("git")
+        .args([
+            "-C",
+            repo_path,
+            "status",
+            "--porcelain=v1",
+            disable_untracked,
+            "--ignore-submodules=all",
+        ])
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output();
+
+    match output {
+        Ok(out) if out.status.success() => {
+            let status = git::parse_porcelain_status(&out.stdout);
+            git::write_status_cache(&cache, &status)?;
+        }
+        _ => {
+            // Fallback: try libgit2
+            if let Some(status) = git::compute_status_counts(std::path::Path::new(repo_path)) {
+                git::write_status_cache(&cache, &status)?;
+            }
+        }
+    }
+
+    // Touch signal file to notify Zsh
+    if let Some(signal) = signal_file {
+        let _ = git::touch_signal_file(std::path::Path::new(signal));
+    }
+
+    // Clean up lock file
+    git::remove_lock_file(&cache);
 
     Ok(())
 }
@@ -379,6 +443,12 @@ fn render_prompt(
     context
         .entry("git_conflicted".to_string())
         .or_insert(json!(0));
+    context
+        .entry("git_from_cache".to_string())
+        .or_insert(json!(false));
+    context
+        .entry("git_async_pending".to_string())
+        .or_insert(json!(false));
 
     // Collect module information (Python, Node, Rust, Docker, etc.)
     // Skip auto-detection if modules were provided via context (e.g., for previews)
