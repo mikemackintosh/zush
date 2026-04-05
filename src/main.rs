@@ -60,8 +60,8 @@ fn read_file_cached(path: &PathBuf) -> Result<String> {
     }
 
     // Cache miss or expired - read file
-    let contents = fs::read_to_string(path)
-        .with_context(|| format!("Failed to read file: {:?}", path))?;
+    let contents =
+        fs::read_to_string(path).with_context(|| format!("Failed to read file: {:?}", path))?;
 
     // Get modification time
     let modified = fs::metadata(path)?
@@ -416,15 +416,9 @@ fn render_prompt(
     context
         .entry("git_conflicted".to_string())
         .or_insert(json!(0));
-    context
-        .entry("git_stash".to_string())
-        .or_insert(json!(0));
-    context
-        .entry("git_ahead".to_string())
-        .or_insert(json!(0));
-    context
-        .entry("git_behind".to_string())
-        .or_insert(json!(0));
+    context.entry("git_stash".to_string()).or_insert(json!(0));
+    context.entry("git_ahead".to_string()).or_insert(json!(0));
+    context.entry("git_behind".to_string()).or_insert(json!(0));
     context
         .entry("git_from_cache".to_string())
         .or_insert(json!(false));
