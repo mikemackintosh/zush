@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.0](https://github.com/mikemackintosh/zush/compare/v1.9.0...v1.10.0) (2026-04-05)
+
+### ✨ Features
+
+* add git stash/ahead/behind, eliminate subprocesses, shell-side perf fixes ([a19dc13](https://github.com/mikemackintosh/zush/commit/a19dc13ebccb62c901264cf05a2cbd8be675d3c7))
+
+### 🐛 Bug Fixes
+
+* async git status for large repositories ([12abeec](https://github.com/mikemackintosh/zush/commit/12abeec519710e1870d7943dd78cba028cdac682))
+* proper async git status with daemonized workers and zsh re-render ([40ad9d2](https://github.com/mikemackintosh/zush/commit/40ad9d2e574d66e07869a49e04ba2dcb773f7c4f))
+
+### 💄 Styles
+
+* apply cargo fmt formatting ([b6f4e4f](https://github.com/mikemackintosh/zush/commit/b6f4e4f43cd1ff2447406d843470dae9cee7cd7d))
+
 ## [1.9.0](https://github.com/mikemackintosh/zush/compare/v1.8.0...v1.9.0) (2026-02-22)
 
 ### ✨ Features
