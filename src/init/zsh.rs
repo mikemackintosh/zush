@@ -495,10 +495,19 @@ zush_precmd() {
 
 # Generate main prompt
 zush_prompt() {
-    local output=$($ZUSH_PROMPT_BIN --template main --format zsh $(_zush_theme_args) prompt \
+    local output
+    output=$($ZUSH_PROMPT_BIN --template main --format zsh $(_zush_theme_args) prompt \
         --context "$(_zush_full_context)" \
         --exit-code $ZUSH_LAST_EXIT_CODE \
-        --execution-time $ZUSH_CMD_DURATION)
+        --execution-time $ZUSH_CMD_DURATION 2>/dev/null)
+
+    # Fallback: if the binary is missing, crashed, or produced no output
+    if [[ -z "$output" ]]; then
+        ZUSH_PROMPT_LINES=2
+        echo -n "%F{blue}${USER}%f in %F{magenta}${PWD/#$HOME/~}%f
+%F{red}%%%f "
+        return
+    fi
 
     # Dynamically count prompt lines for accurate transient replacement
     # Count newlines in the raw output (strip zsh %{...%} wrappers for counting)

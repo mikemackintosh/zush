@@ -76,6 +76,13 @@ pub enum Commands {
         command: HistoryCommands,
     },
 
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        #[arg(default_value = "zsh")]
+        shell: String,
+    },
+
     /// Internal: compute git status in background (not for direct use)
     #[command(name = "_internal-git-status", hide = true)]
     InternalGitStatus {

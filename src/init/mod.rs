@@ -60,12 +60,6 @@ jobs = ""
 error = "✖"
 success = "✓"
 
-[segments]
-# Segment visibility and order
-left = ["status", "user", "host", "directory"]
-center = ["git"]
-right = ["execution_time", "time"]
-
 [templates.main]
 # Main prompt template using Handlebars syntax
 template = """
