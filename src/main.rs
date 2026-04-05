@@ -97,6 +97,9 @@ fn main() -> Result<()> {
         Some(Commands::Config) => {
             init::print_default_config()?;
         }
+        Some(Commands::Completions { shell }) => {
+            generate_completions(shell)?;
+        }
         Some(Commands::InternalGitStatus {
             repo_path,
             cache_path,
@@ -121,6 +124,25 @@ fn main() -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+/// Generate shell completions for the given shell
+fn generate_completions(shell: &str) -> Result<()> {
+    use clap::CommandFactory;
+    use clap_complete::{generate, Shell};
+
+    let shell = match shell {
+        "zsh" => Shell::Zsh,
+        "bash" => Shell::Bash,
+        "fish" => Shell::Fish,
+        _ => {
+            anyhow::bail!("Unsupported shell '{}'. Supported: zsh, bash, fish", shell);
+        }
+    };
+
+    let mut cmd = Cli::command();
+    generate(shell, &mut cmd, "zush-prompt", &mut std::io::stdout());
     Ok(())
 }
 

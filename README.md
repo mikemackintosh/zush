@@ -486,7 +486,7 @@ cargo clippy
 | Gradient text | Yes | No | No | Partial |
 | Template engine | Handlebars | Go templates | TOML | Zsh |
 | Dual config system | Yes | No | No | Partial |
-| Language modules | 6 (Python, Node, Go, Ruby, Rust, Docker) | 40+ | 40+ | Limited |
+| Language modules | 10 (Python, Node, Go, Ruby, Rust, Docker, K8s, AWS, Terraform, GCloud) | 40+ | 40+ | Limited |
 | Sandboxed modules | Yes | No | No | No |
 | Module caching | 200ms intelligent | None | Filesystem-based | Limited |
 
