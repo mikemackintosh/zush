@@ -332,7 +332,7 @@ _zush_full_context() {
     "shell": "zsh",
     "ssh": "${SSH_CONNECTION:+true}",
     "virtual_env": "${VIRTUAL_ENV:+$(basename $VIRTUAL_ENV)}",
-    "jobs": "$(jobs | wc -l | tr -d ' ')",
+    "jobs": "${(%):-%j}",
     "history_number": "$HISTCMD",
     "time": "$(date +%H:%M:%S)"
 }
@@ -504,7 +504,8 @@ zush_prompt() {
     # Count newlines in the raw output (strip zsh %{...%} wrappers for counting)
     local raw_output="${output//\%\{/}"
     raw_output="${raw_output//\%\}/}"
-    local line_count=$(( $(echo -n "$raw_output" | wc -l) + 1 ))
+    local -a lines=( "${(@f)raw_output}" )
+    local line_count=${#lines}
     ZUSH_PROMPT_LINES=$line_count
 
     # If the signal file already exists (background worker finished quickly),
@@ -515,7 +516,8 @@ zush_prompt() {
     else
         # Check if a background worker is running by looking for lock files
         local cache_dir="${${XDG_CACHE_HOME:-$HOME/.cache}/zush}"
-        if [[ -n "$(find "$cache_dir" -name 'git-status-*.lock' -newer /dev/null 2>/dev/null | head -1)" ]]; then
+        local lock_files=( "$cache_dir"/git-status-*.lock(N) )
+        if (( ${#lock_files} )); then
             _zush_async_start
         fi
     fi

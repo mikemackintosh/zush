@@ -15,6 +15,9 @@ pub struct GitStatus {
     pub renamed: usize,
     pub untracked: usize,
     pub conflicted: usize,
+    pub stash_count: usize,
+    pub ahead: usize,
+    pub behind: usize,
     /// Whether status counts are from a background cache (may be stale)
     pub from_cache: bool,
     /// Whether a background worker was spawned (prompt should async-refresh)
@@ -66,6 +69,14 @@ pub fn get_git_status(path: &Path) -> Option<GitStatus> {
         ..Default::default()
     };
 
+    // Read stash count (fast — just counts lines in reflog file)
+    status.stash_count = read_stash_count_fast(&git_dir);
+
+    // Read ahead/behind counts (fast — reads packed-refs and loose refs)
+    let (ahead, behind) = read_ahead_behind(&git_dir, &status.branch);
+    status.ahead = ahead;
+    status.behind = behind;
+
     // Check if minimal mode is enabled (skip all status checks)
     if is_env_truthy("ZUSH_GIT_MINIMAL") {
         return Some(status);
@@ -76,7 +87,7 @@ pub fn get_git_status(path: &Path) -> Option<GitStatus> {
     let cache_path = status_cache_path(repo_root);
 
     if let Some(cached) = read_status_cache(&cache_path) {
-        // Use cached counts
+        // Use cached counts (stash/ahead/behind already set from fast path above)
         status.staged = cached.staged;
         status.modified = cached.modified;
         status.added = cached.added;
@@ -171,6 +182,74 @@ fn find_git_dir(mut path: &Path) -> Option<PathBuf> {
 
         path = path.parent()?;
     }
+}
+
+/// Fast stash count: count lines in .git/logs/refs/stash (no libgit2)
+fn read_stash_count_fast(git_dir: &Path) -> usize {
+    let stash_log = git_dir.join("logs").join("refs").join("stash");
+    match fs::read_to_string(stash_log) {
+        Ok(contents) => contents.lines().count(),
+        Err(_) => 0,
+    }
+}
+
+/// Fast ahead/behind: use libgit2's graph_ahead_behind (requires repo open
+/// but avoids spawning git subprocess). Falls back to 0/0 on any error.
+fn read_ahead_behind(git_dir: &Path, branch: &str) -> (usize, usize) {
+    if branch.is_empty() {
+        return (0, 0);
+    }
+
+    // Resolve the repo root from git_dir
+    let repo_root = match git_dir.parent() {
+        Some(p) => p,
+        None => return (0, 0),
+    };
+
+    let repo = match Repository::discover(repo_root) {
+        Ok(r) => r,
+        Err(_) => return (0, 0),
+    };
+
+    // Get the local branch reference
+    let local_ref = match repo.find_branch(branch, git2::BranchType::Local) {
+        Ok(b) => b,
+        Err(_) => return (0, 0),
+    };
+
+    // Get the upstream tracking branch
+    let upstream = match local_ref.upstream() {
+        Ok(u) => u,
+        Err(_) => return (0, 0), // No upstream configured
+    };
+
+    let local_oid = match local_ref.get().target() {
+        Some(oid) => oid,
+        None => return (0, 0),
+    };
+
+    let upstream_oid = match upstream.get().target() {
+        Some(oid) => oid,
+        None => return (0, 0),
+    };
+
+    match repo.graph_ahead_behind(local_oid, upstream_oid) {
+        Ok((ahead, behind)) => (ahead, behind),
+        Err(_) => (0, 0),
+    }
+}
+
+/// Compute full git status including stash and ahead/behind (for background worker)
+pub fn compute_full_status(path: &Path) -> Option<GitStatus> {
+    let git_dir = find_git_dir(path)?;
+    let branch = read_branch_fast(&git_dir).unwrap_or_default();
+    let mut status = compute_status_counts(path)?;
+    status.branch = branch.clone();
+    status.stash_count = read_stash_count_fast(&git_dir);
+    let (ahead, behind) = read_ahead_behind(&git_dir, &branch);
+    status.ahead = ahead;
+    status.behind = behind;
+    Some(status)
 }
 
 /// Compute status counts using libgit2 (synchronous)
@@ -337,7 +416,8 @@ pub fn remove_lock_file(cache_path: &Path) {
 }
 
 /// Parse git status --porcelain=v1 output into counts
-pub fn parse_porcelain_status(output: &[u8]) -> GitStatus {
+#[cfg(test)]
+fn parse_porcelain_status(output: &[u8]) -> GitStatus {
     let mut status = GitStatus::default();
 
     for line in output.split(|&b| b == b'\n') {
@@ -400,6 +480,9 @@ pub fn write_status_cache(cache_path: &Path, status: &GitStatus) -> std::io::Res
         "renamed": status.renamed,
         "untracked": status.untracked,
         "conflicted": status.conflicted,
+        "stash_count": status.stash_count,
+        "ahead": status.ahead,
+        "behind": status.behind,
     });
 
     // Atomic write: write to temp file, then rename into place
@@ -440,6 +523,9 @@ fn read_status_cache(cache_path: &Path) -> Option<GitStatus> {
         renamed: v["renamed"].as_u64().unwrap_or(0) as usize,
         untracked: v["untracked"].as_u64().unwrap_or(0) as usize,
         conflicted: v["conflicted"].as_u64().unwrap_or(0) as usize,
+        stash_count: v["stash_count"].as_u64().unwrap_or(0) as usize,
+        ahead: v["ahead"].as_u64().unwrap_or(0) as usize,
+        behind: v["behind"].as_u64().unwrap_or(0) as usize,
         from_cache: true,
         ..Default::default()
     })
@@ -470,6 +556,9 @@ pub fn git_status_to_json(status: &GitStatus) -> Value {
         "git_renamed": status.renamed,
         "git_untracked": status.untracked,
         "git_conflicted": status.conflicted,
+        "git_stash": status.stash_count,
+        "git_ahead": status.ahead,
+        "git_behind": status.behind,
         "git_from_cache": status.from_cache,
         "git_async_pending": status.async_pending,
     })

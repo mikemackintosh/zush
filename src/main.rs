@@ -125,7 +125,7 @@ fn main() -> Result<()> {
 }
 
 /// Handle the internal git status background worker subcommand.
-/// This runs as a daemonized child process, computes git status,
+/// This runs as a daemonized child process, computes git status via libgit2,
 /// writes the result to a cache file, and touches a signal file.
 fn handle_internal_git_status(
     repo_path: &str,
@@ -133,41 +133,14 @@ fn handle_internal_git_status(
     signal_file: Option<&str>,
 ) -> Result<()> {
     let cache = PathBuf::from(cache_path);
+    let path = std::path::Path::new(repo_path);
 
     // Write lock file so other prompt renders know we're working
     git::write_lock_file(&cache)?;
 
-    // Compute git status using git porcelain (more robust than libgit2 for background)
-    let disable_untracked = if git::is_env_truthy("ZUSH_GIT_DISABLE_UNTRACKED") {
-        "-uno"
-    } else {
-        "-unormal"
-    };
-
-    let output = std::process::Command::new("git")
-        .args([
-            "-C",
-            repo_path,
-            "status",
-            "--porcelain=v1",
-            disable_untracked,
-            "--ignore-submodules=all",
-        ])
-        .stdin(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .output();
-
-    match output {
-        Ok(out) if out.status.success() => {
-            let status = git::parse_porcelain_status(&out.stdout);
-            git::write_status_cache(&cache, &status)?;
-        }
-        _ => {
-            // Fallback: try libgit2
-            if let Some(status) = git::compute_status_counts(std::path::Path::new(repo_path)) {
-                git::write_status_cache(&cache, &status)?;
-            }
-        }
+    // Compute full git status using libgit2 (no subprocess spawning)
+    if let Some(status) = git::compute_full_status(path) {
+        git::write_status_cache(&cache, &status)?;
     }
 
     // Touch signal file to notify Zsh
@@ -442,6 +415,15 @@ fn render_prompt(
         .or_insert(json!(0));
     context
         .entry("git_conflicted".to_string())
+        .or_insert(json!(0));
+    context
+        .entry("git_stash".to_string())
+        .or_insert(json!(0));
+    context
+        .entry("git_ahead".to_string())
+        .or_insert(json!(0));
+    context
+        .entry("git_behind".to_string())
         .or_insert(json!(0));
     context
         .entry("git_from_cache".to_string())
