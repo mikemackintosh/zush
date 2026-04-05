@@ -37,8 +37,12 @@ impl GCloudModule {
 
         // Read from gcloud config - check active config first, then default
         let config_dir = context.home.join(".config").join("gcloud");
-        let active_config_name = self.get_config_name(context).unwrap_or_else(|| "default".to_string());
-        let properties_file = config_dir.join("configurations").join(format!("config_{}", active_config_name));
+        let active_config_name = self
+            .get_config_name(context)
+            .unwrap_or_else(|| "default".to_string());
+        let properties_file = config_dir
+            .join("configurations")
+            .join(format!("config_{}", active_config_name));
 
         if context.fs.exists(&properties_file) {
             if let Ok(contents) = context.fs.read_to_string(&properties_file) {
@@ -46,7 +50,10 @@ impl GCloudModule {
                 for line in contents.lines() {
                     let trimmed = line.trim();
                     if let Some(project) = trimmed.strip_prefix("project") {
-                        let project = project.trim().strip_prefix('=').map(|p| p.trim().to_string());
+                        let project = project
+                            .trim()
+                            .strip_prefix('=')
+                            .map(|p| p.trim().to_string());
                         if let Some(p) = project {
                             if !p.is_empty() {
                                 return Some(p);
@@ -133,10 +140,7 @@ impl Module for GCloudModule {
 
     fn render(&self, context: &ModuleContext) -> Result<String> {
         // Label in blue (Google brand color)
-        let label = format!(
-            "\x1b[38;2;66;133;244m{}gcp\x1b[39m",
-            self.symbol
-        );
+        let label = format!("\x1b[38;2;66;133;244m{}gcp\x1b[39m", self.symbol);
 
         // Detail: project + config name, dimmed in square brackets
         let mut detail_parts = Vec::new();

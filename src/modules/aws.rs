@@ -82,7 +82,10 @@ impl AwsModule {
                     }
                     if in_section {
                         if let Some(region) = trimmed.strip_prefix("region") {
-                            let region = region.trim().strip_prefix('=').map(|r| r.trim().to_string());
+                            let region = region
+                                .trim()
+                                .strip_prefix('=')
+                                .map(|r| r.trim().to_string());
                             if let Some(r) = region {
                                 if !r.is_empty() {
                                     return Some(r);
@@ -152,10 +155,7 @@ impl Module for AwsModule {
 
     fn render(&self, context: &ModuleContext) -> Result<String> {
         // Label in orange (AWS brand color)
-        let label = format!(
-            "\x1b[38;2;255;153;0m{}aws\x1b[39m",
-            self.symbol
-        );
+        let label = format!("\x1b[38;2;255;153;0m{}aws\x1b[39m", self.symbol);
 
         // Detail: profile + region, dimmed
         let mut detail_parts = Vec::new();

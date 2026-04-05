@@ -109,7 +109,10 @@ impl KubernetesModule {
                 }
 
                 // Exit context if we hit another context or section
-                if trimmed.starts_with("- name:") || trimmed.starts_with("users:") || trimmed.starts_with("clusters:") {
+                if trimmed.starts_with("- name:")
+                    || trimmed.starts_with("users:")
+                    || trimmed.starts_with("clusters:")
+                {
                     break;
                 }
             }
